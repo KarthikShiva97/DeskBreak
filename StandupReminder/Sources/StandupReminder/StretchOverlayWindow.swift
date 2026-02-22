@@ -10,15 +10,19 @@ struct StretchExercise {
     let instruction: String
 }
 
+// Exercises targeted for disc bulge / lower back relief.
+// Prioritizes standing extensions and decompression over seated twists.
 private let exercises: [StretchExercise] = [
-    StretchExercise(name: "Neck Roll", symbol: "figure.cooldown", instruction: "Slowly roll your head in a circle. 5 times each direction."),
-    StretchExercise(name: "Shoulder Shrug", symbol: "figure.arms.open", instruction: "Raise both shoulders to your ears, hold 3 seconds, release. Repeat 5 times."),
-    StretchExercise(name: "Standing Stretch", symbol: "figure.stand", instruction: "Stand up, reach both arms overhead, and stretch tall. Hold for 10 seconds."),
-    StretchExercise(name: "Wrist Circles", symbol: "hand.raised.fingers.spread", instruction: "Extend your arms and rotate your wrists in circles. 10 times each direction."),
-    StretchExercise(name: "Spinal Twist", symbol: "figure.flexibility", instruction: "Sit upright, twist your torso to the left, hold 10s. Repeat on the right."),
-    StretchExercise(name: "Eye Break", symbol: "eye", instruction: "Look at something 20 feet away for 20 seconds. Blink slowly."),
-    StretchExercise(name: "Leg Stretch", symbol: "figure.walk", instruction: "Stand up and do 10 calf raises, then walk around for a moment."),
-    StretchExercise(name: "Deep Breathing", symbol: "wind", instruction: "Inhale deeply for 4 seconds, hold for 4, exhale for 6. Repeat 5 times."),
+    StretchExercise(name: "Standing Back Extension", symbol: "figure.stand", instruction: "Stand up. Place hands on lower back, gently lean backwards. Hold 5 seconds. Repeat 5 times. This is the single most important move for disc bulges."),
+    StretchExercise(name: "McKenzie Press-Up", symbol: "figure.cooldown", instruction: "Lie face down. Place palms flat at shoulder level. Press up, extending your back while keeping hips on the floor. Hold 10 seconds. Repeat 5 times."),
+    StretchExercise(name: "Cat-Cow", symbol: "figure.flexibility", instruction: "On hands and knees: arch your back up (cat), then let your belly drop and look up (cow). Slow and controlled. 8 reps."),
+    StretchExercise(name: "Walk It Out", symbol: "figure.walk", instruction: "Walk around your space for 60 seconds. Walking gently decompresses spinal discs. Keep upright posture."),
+    StretchExercise(name: "Nerve Glide", symbol: "figure.arms.open", instruction: "Stand tall. Extend one leg forward, heel down, toes up. Gently lean forward with a straight back until you feel a stretch behind the leg. Hold 10s each side."),
+    StretchExercise(name: "Hip Flexor Stretch", symbol: "figure.stand", instruction: "Step one foot forward into a lunge. Keep back straight, gently push hips forward. Sitting all day tightens hip flexors which pulls on your spine. Hold 15s each side."),
+    StretchExercise(name: "Supported Squat", symbol: "figure.stand", instruction: "Hold onto your desk edge. Squat down slowly, letting your spine decompress. Keep heels flat. Hold 15 seconds."),
+    StretchExercise(name: "Deep Breathing", symbol: "wind", instruction: "Stand or lie down. Breathe into your belly: inhale 4 seconds, hold 4, exhale 6. This relaxes the muscles guarding your spine. 5 rounds."),
+    StretchExercise(name: "Chin Tuck", symbol: "figure.cooldown", instruction: "Sit or stand tall. Pull your chin straight back (make a double chin). Hold 5 seconds. Repeat 8 times. Corrects forward head posture from screen work."),
+    StretchExercise(name: "Prone Lying", symbol: "figure.cooldown", instruction: "Lie face down flat on the floor for 30-60 seconds. Just breathe. This passively extends the spine and takes pressure off the disc."),
 ]
 
 // MARK: - SwiftUI Overlay View

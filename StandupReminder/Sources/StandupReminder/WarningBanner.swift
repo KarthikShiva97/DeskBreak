@@ -7,6 +7,7 @@ import SwiftUI
 struct WarningBannerView: View {
     let secondsUntilBreak: Int
     let canSnooze: Bool
+    let snoozeLabel: String
     let onSnooze: () -> Void
 
     @State private var countdown: Int
@@ -14,9 +15,10 @@ struct WarningBannerView: View {
 
     private let timerPublisher = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
-    init(secondsUntilBreak: Int, canSnooze: Bool, onSnooze: @escaping () -> Void) {
+    init(secondsUntilBreak: Int, canSnooze: Bool, snoozeLabel: String, onSnooze: @escaping () -> Void) {
         self.secondsUntilBreak = secondsUntilBreak
         self.canSnooze = canSnooze
+        self.snoozeLabel = snoozeLabel
         self.onSnooze = onSnooze
         self._countdown = State(initialValue: secondsUntilBreak)
     }
@@ -43,7 +45,7 @@ struct WarningBannerView: View {
 
             if canSnooze {
                 Button(action: onSnooze) {
-                    Label("Snooze 5m", systemImage: "clock.badge.questionmark")
+                    Label("Snooze \(snoozeLabel)", systemImage: "clock.badge.questionmark")
                         .font(.system(size: 12, weight: .medium))
                 }
                 .buttonStyle(.bordered)
@@ -75,12 +77,13 @@ struct WarningBannerView: View {
 final class WarningBannerController {
     private var window: NSWindow?
 
-    func show(secondsUntilBreak: Int, canSnooze: Bool, onSnooze: @escaping () -> Void) {
+    func show(secondsUntilBreak: Int, canSnooze: Bool, snoozeLabel: String = "5m", onSnooze: @escaping () -> Void) {
         dismiss()
 
         let bannerView = WarningBannerView(
             secondsUntilBreak: secondsUntilBreak,
             canSnooze: canSnooze,
+            snoozeLabel: snoozeLabel,
             onSnooze: { [weak self] in
                 self?.dismiss()
                 onSnooze()

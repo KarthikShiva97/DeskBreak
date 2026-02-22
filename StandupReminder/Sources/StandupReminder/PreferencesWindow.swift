@@ -2,7 +2,7 @@ import SwiftUI
 
 /// SwiftUI view for configuring reminder settings.
 struct PreferencesView: View {
-    @AppStorage("reminderIntervalMinutes") private var intervalMinutes: Int = 30
+    @AppStorage("reminderIntervalMinutes") private var intervalMinutes: Int = 25
     @AppStorage("idleThresholdSeconds") private var idleThreshold: Double = 120
     @AppStorage("blockingModeEnabled") private var blockingMode: Bool = true
     @AppStorage("stretchDurationSeconds") private var stretchDuration: Int = 60
@@ -10,7 +10,7 @@ struct PreferencesView: View {
     /// Called when the user changes settings so the ReminderManager can pick them up.
     var onSettingsChanged: ((_ intervalMinutes: Int, _ idleThreshold: Double, _ blockingMode: Bool, _ stretchDuration: Int) -> Void)?
 
-    private let intervalOptions = [10, 15, 20, 25, 30, 45, 60, 90, 120]
+    private let intervalOptions = [15, 20, 25, 30, 45, 60]
     private let idleOptions: [(label: String, seconds: Double)] = [
         ("1 minute", 60),
         ("2 minutes", 120),
@@ -34,7 +34,7 @@ struct PreferencesView: View {
                         Text("\(mins) minutes").tag(mins)
                     }
                 }
-                .onChange(of: intervalMinutes) { _, newValue in
+                .onChange(of: intervalMinutes) { _, _ in
                     notifyChange()
                 }
 
@@ -46,6 +46,10 @@ struct PreferencesView: View {
                 .onChange(of: idleThreshold) { _, _ in
                     notifyChange()
                 }
+
+                Text("25 minutes is recommended for spinal disc issues. Shorter = better for your back.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             } header: {
                 Text("Reminder Settings")
             }
@@ -66,7 +70,7 @@ struct PreferencesView: View {
                         notifyChange()
                     }
 
-                    Text("A full-screen overlay will appear and block your work until the stretch timer finishes. You can skip after 10 seconds.")
+                    Text("Full-screen overlay blocks your work until the timer finishes. You can skip after 10 seconds. Automatically deferred during screen sharing.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -75,15 +79,20 @@ struct PreferencesView: View {
             }
 
             Section {
-                Text("StandupReminder sits in your menu bar and tracks how long you've been actively working (mouse/keyboard activity). When you've been working for the configured interval, it enforces a stretch break.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Snooze: 2 per break (5min, then 2min)")
+                    Text("Posture nudge: silent reminder at halfway")
+                    Text("Break Now: Cmd+B in the menu bar")
+                    Text("Screen sharing: overlay auto-deferred")
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
             } header: {
-                Text("About")
+                Text("How it works")
             }
         }
         .formStyle(.grouped)
-        .frame(width: 420, height: 400)
+        .frame(width: 420, height: 440)
     }
 
     private func notifyChange() {
@@ -100,7 +109,7 @@ final class PreferencesWindowController: NSWindowController {
         let window = NSWindow(contentViewController: hostingController)
         window.title = "StandupReminder Preferences"
         window.styleMask = [.titled, .closable]
-        window.setContentSize(NSSize(width: 420, height: 400))
+        window.setContentSize(NSSize(width: 420, height: 440))
         window.center()
 
         self.init(window: window)

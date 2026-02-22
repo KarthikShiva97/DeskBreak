@@ -30,7 +30,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         reminderManager.onWarning = { [weak self] secondsUntilBreak, canSnooze in
-            self?.warningBanner.show(secondsUntilBreak: secondsUntilBreak, canSnooze: canSnooze) { [weak self] in
+            guard let self else { return }
+            self.warningBanner.show(
+                secondsUntilBreak: secondsUntilBreak,
+                canSnooze: canSnooze,
+                snoozeLabel: self.reminderManager.nextSnoozeLabel
+            ) { [weak self] in
                 self?.reminderManager.snooze()
             }
         }
@@ -48,6 +53,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 }
                 self?.updateStatsMenuItems()
             }
+        }
+
+        reminderManager.onPostureNudge = { [weak self] in
+            self?.showPostureNudge()
         }
 
         reminderManager.start()
@@ -97,6 +106,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         menu.addItem(.separator())
 
+        // "Break Now" — for when your back tells you NOW
+        let breakNowItem = NSMenuItem(title: "Break Now", action: #selector(breakNow), keyEquivalent: "b")
+        breakNowItem.target = self
+        menu.addItem(breakNowItem)
+
         toggleMenuItem = NSMenuItem(title: "Pause Tracking", action: #selector(toggleTracking), keyEquivalent: "p")
         toggleMenuItem.target = self
         menu.addItem(toggleMenuItem)
@@ -136,7 +150,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         statusItem.button?.title = " \(timeString)"
 
-        // Update menu items
         if hours > 0 {
             timerMenuItem.title = "Working: \(hours)h \(mins)m"
         } else {
@@ -162,11 +175,43 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         streakMenuItem.title = "Streak: \(streak) day\(streak == 1 ? "" : "s")"
     }
 
+    // MARK: - Posture Micro-Nudge
+
+    private func showPostureNudge() {
+        // Brief flash of the menu bar icon + a subtle notification
+        guard let button = statusItem.button else { return }
+
+        // Flash the icon orange briefly
+        let originalImage = button.image
+        let config = NSImage.SymbolConfiguration(pointSize: 13, weight: .medium)
+        if let alertImage = NSImage(systemSymbolName: "arrow.up.message", accessibilityDescription: "Check posture")?
+            .withSymbolConfiguration(config) {
+            button.image = alertImage
+        }
+
+        // Restore after 3 seconds
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+            button.image = originalImage
+        }
+
+        // Send a quiet notification (no sound)
+        let content = UNMutableNotificationContent()
+        content.title = "Posture Check"
+        content.body = "Sit up straight. Shoulders back. Is your screen at eye level?"
+        // No sound — this should be gentle
+
+        let request = UNNotificationRequest(
+            identifier: "posture-nudge",
+            content: content,
+            trigger: nil
+        )
+        UNUserNotificationCenter.current().add(request)
+    }
+
     // MARK: - Session Summary on Quit
 
     private func showSessionSummaryIfNeeded() {
         let stats = reminderManager.stats
-        // Only show if the user actually did some work
         guard reminderManager.totalActiveSeconds > 60 else { return }
 
         let summary = stats.sessionSummary(totalWorkSeconds: reminderManager.totalActiveSeconds)
@@ -181,6 +226,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     // MARK: - Actions
+
+    @objc private func breakNow() {
+        reminderManager.triggerBreakNow()
+    }
 
     @objc private func toggleTracking() {
         isTracking.toggle()

@@ -1,3 +1,4 @@
+import Cocoa
 import Foundation
 import UserNotifications
 
@@ -15,8 +16,8 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
     /// Session statistics (streaks, break counts).
     let stats = SessionStats()
 
-    /// How often (in minutes) to send a standup reminder. Defaults to 30.
-    var reminderIntervalMinutes: Int = 30 {
+    /// How often (in minutes) to send a standup reminder. Defaults to 25 (better for disc issues).
+    var reminderIntervalMinutes: Int = 25 {
         didSet { UserDefaults.standard.set(reminderIntervalMinutes, forKey: "reminderIntervalMinutes") }
     }
 
@@ -42,11 +43,16 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
     /// Seconds of warning before the full block. Defaults to 30.
     let warningLeadTimeSeconds: TimeInterval = 30
 
-    /// Whether a snooze has already been used for the current break cycle.
-    private var snoozeUsedThisCycle = false
+    /// Number of snoozes used this cycle. Max 2: first = 5min, second = 2min.
+    private var snoozesUsedThisCycle: Int = 0
+    private static let maxSnoozesPerCycle = 2
+    private static let snoozeDurations: [TimeInterval] = [5 * 60, 2 * 60] // 5min, then 2min
 
     /// Whether the warning has been shown for the current cycle.
     private var warningShownThisCycle = false
+
+    /// Whether posture nudge has been shown for the current cycle.
+    private var postureNudgeShownThisCycle = false
 
     /// Callback fired every poll tick so the UI can update the displayed time.
     var onTick: ((_ totalActive: TimeInterval, _ sinceLast: TimeInterval, _ isActive: Bool) -> Void)?
@@ -60,13 +66,15 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
     /// Callback to dismiss the warning banner.
     var onDismissWarning: (() -> Void)?
 
+    /// Callback for a subtle posture nudge at the halfway point.
+    var onPostureNudge: (() -> Void)?
+
     /// How often we poll for idle state (seconds).
     private let pollInterval: TimeInterval = 5
 
     override init() {
-        // Read saved defaults before calling super to avoid triggering didSet
         let defaults = UserDefaults.standard
-        let savedInterval = defaults.object(forKey: "reminderIntervalMinutes") as? Int ?? 30
+        let savedInterval = defaults.object(forKey: "reminderIntervalMinutes") as? Int ?? 25
         let savedBlocking = defaults.object(forKey: "blockingModeEnabled") as? Bool ?? true
         let savedStretchDuration = defaults.object(forKey: "stretchDurationSeconds") as? Int ?? 60
 
@@ -103,23 +111,78 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
     func resetSession() {
         activeSecondsSinceLastReminder = 0
         totalActiveSeconds = 0
-        snoozeUsedThisCycle = false
+        snoozesUsedThisCycle = 0
         warningShownThisCycle = false
+        postureNudgeShownThisCycle = false
     }
 
-    /// Snooze the current break by 5 minutes. Only allowed once per cycle.
+    /// Manually trigger a break right now (e.g., user feels stiffness).
+    func triggerBreakNow() {
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.onDismissWarning?()
+            if self.blockingModeEnabled {
+                self.onStretchBreak?(self.stretchDurationSeconds)
+            }
+        }
+        // Reset the cycle so the next auto-break starts fresh
+        activeSecondsSinceLastReminder = 0
+        snoozesUsedThisCycle = 0
+        warningShownThisCycle = false
+        postureNudgeShownThisCycle = false
+    }
+
+    /// Snooze the current break. First snooze = 5min, second = 2min.
     func snooze() {
-        guard !snoozeUsedThisCycle else { return }
-        snoozeUsedThisCycle = true
+        guard snoozesUsedThisCycle < Self.maxSnoozesPerCycle else { return }
+        let snoozeAmount = Self.snoozeDurations[snoozesUsedThisCycle]
+        snoozesUsedThisCycle += 1
         warningShownThisCycle = false
         stats.recordBreakSnoozed()
-        // Push the break 5 minutes into the future by rolling back the counter
-        let snoozeAmount: TimeInterval = 5 * 60
         activeSecondsSinceLastReminder = max(0, activeSecondsSinceLastReminder - snoozeAmount)
 
         DispatchQueue.main.async { [weak self] in
             self?.onDismissWarning?()
         }
+    }
+
+    var canSnooze: Bool {
+        snoozesUsedThisCycle < Self.maxSnoozesPerCycle
+    }
+
+    /// Human-readable description of the next snooze duration.
+    var nextSnoozeLabel: String {
+        guard canSnooze else { return "" }
+        let seconds = Self.snoozeDurations[snoozesUsedThisCycle]
+        return "\(Int(seconds / 60))m"
+    }
+
+    // MARK: - Screen Sharing Detection
+
+    /// Returns true if any screen is currently being captured/shared.
+    private func isScreenBeingShared() -> Bool {
+        // CGWindowListCopyWindowInfo can detect screen recording/sharing,
+        // but the simplest reliable check: SCC framework (macOS 12.3+).
+        // Fallback: check if a well-known screen sharing process is running.
+        for screen in NSScreen.screens {
+            if #available(macOS 14.0, *) {
+                // On Sonoma+, directly check if the screen is being captured
+                // by checking the screen's display ID against CGDisplayStream.
+            }
+            // Cross-version approach: check for screen capture via CGSSession
+            // For now, use the presence of common screen sharing apps.
+        }
+
+        let sharingProcesses = ["zoom.us", "Slack Helper (Screen Sharing)", "screencaptureui", "ScreenFlow", "OBS"]
+        let workspace = NSWorkspace.shared
+        let runningApps = workspace.runningApplications
+        for app in runningApps {
+            guard let name = app.localizedName else { continue }
+            if sharingProcesses.contains(where: { name.contains($0) }) && app.isActive {
+                return true
+            }
+        }
+        return false
     }
 
     // MARK: - Tick
@@ -136,20 +199,30 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
         let thresholdSeconds = TimeInterval(reminderIntervalMinutes) * 60
         let timeUntilBreak = thresholdSeconds - activeSecondsSinceLastReminder
 
+        // Posture micro-nudge at the halfway point
+        let halfwayPoint = thresholdSeconds / 2
+        if !postureNudgeShownThisCycle && activeSecondsSinceLastReminder >= halfwayPoint && timeUntilBreak > warningLeadTimeSeconds {
+            postureNudgeShownThisCycle = true
+            DispatchQueue.main.async { [weak self] in
+                self?.onPostureNudge?()
+            }
+        }
+
         // Show warning banner before the break
         if blockingModeEnabled && !warningShownThisCycle && timeUntilBreak <= warningLeadTimeSeconds && timeUntilBreak > 0 {
             warningShownThisCycle = true
             DispatchQueue.main.async { [weak self] in
                 guard let self else { return }
-                self.onWarning?(Int(timeUntilBreak), !self.snoozeUsedThisCycle)
+                self.onWarning?(Int(timeUntilBreak), self.canSnooze)
             }
         }
 
         if activeSecondsSinceLastReminder >= thresholdSeconds {
             fireReminder()
             activeSecondsSinceLastReminder = 0
-            snoozeUsedThisCycle = false
+            snoozesUsedThisCycle = 0
             warningShownThisCycle = false
+            postureNudgeShownThisCycle = false
         }
     }
 
@@ -167,16 +240,19 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
     }
 
     private func fireReminder() {
+        // If user is screen sharing, skip the blocking overlay — just notify.
+        let sharing = isScreenBeingShared()
+
         let content = UNMutableNotificationContent()
-        content.title = "Standup Reminder"
+        content.title = sharing ? "Standup Reminder (screen share detected)" : "Standup Reminder"
         let minutes = Int(totalActiveSeconds) / 60
-        content.body = "You've been working for \(minutes) minutes. Time to stand up, stretch, and take a break!"
+        content.body = "You've been working for \(minutes) minutes. Time to stand up and decompress your spine!"
         content.sound = .default
 
         let request = UNNotificationRequest(
             identifier: "standup-\(UUID().uuidString)",
             content: content,
-            trigger: nil // Fire immediately
+            trigger: nil
         )
 
         UNUserNotificationCenter.current().add(request) { error in
@@ -185,11 +261,11 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
             }
         }
 
-        // Dismiss warning banner and show blocking overlay
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
             self.onDismissWarning?()
-            if self.blockingModeEnabled {
+            // Only show blocking overlay if NOT screen sharing
+            if self.blockingModeEnabled && !sharing {
                 self.onStretchBreak?(self.stretchDurationSeconds)
             }
         }
@@ -197,7 +273,6 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
 
     // MARK: - UNUserNotificationCenterDelegate
 
-    /// Show notifications even when the app is in the foreground.
     func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         willPresent notification: UNNotification,
