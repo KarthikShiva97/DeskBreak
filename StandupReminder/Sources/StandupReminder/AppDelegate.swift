@@ -5,6 +5,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem!
     private let reminderManager = ReminderManager()
     private var preferencesWindowController: PreferencesWindowController?
+    private let stretchOverlay = StretchOverlayWindowController()
 
     // Menu items we update dynamically
     private var timerMenuItem: NSMenuItem!
@@ -22,6 +23,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         reminderManager.onTick = { [weak self] totalActive, sinceLast, isActive in
             DispatchQueue.main.async {
                 self?.updateMenuBarDisplay(totalActive: totalActive, sinceLast: sinceLast, isActive: isActive)
+            }
+        }
+
+        reminderManager.onStretchBreak = { [weak self] durationSeconds in
+            self?.stretchOverlay.show(stretchDurationSeconds: durationSeconds) {
+                // Stretch complete — tracking already resumed via tick timer
             }
         }
 
@@ -141,9 +148,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func openPreferences() {
         if preferencesWindowController == nil {
-            preferencesWindowController = PreferencesWindowController { [weak self] interval, idle in
+            preferencesWindowController = PreferencesWindowController { [weak self] interval, idle, blocking, stretchDuration in
                 self?.reminderManager.reminderIntervalMinutes = interval
                 self?.reminderManager.idleThresholdSeconds = idle
+                self?.reminderManager.blockingModeEnabled = blocking
+                self?.reminderManager.stretchDurationSeconds = stretchDuration
             }
         }
         preferencesWindowController?.showWindow()

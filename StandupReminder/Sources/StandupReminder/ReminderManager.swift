@@ -26,8 +26,21 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
         }
     }
 
+    /// When true, shows a full-screen overlay that blocks work until stretching is done.
+    var blockingModeEnabled: Bool = true {
+        didSet { UserDefaults.standard.set(blockingModeEnabled, forKey: "blockingModeEnabled") }
+    }
+
+    /// How long (seconds) the blocking stretch overlay lasts. Defaults to 60.
+    var stretchDurationSeconds: Int = 60 {
+        didSet { UserDefaults.standard.set(stretchDurationSeconds, forKey: "stretchDurationSeconds") }
+    }
+
     /// Callback fired every poll tick so the UI can update the displayed time.
     var onTick: ((_ totalActive: TimeInterval, _ sinceLast: TimeInterval, _ isActive: Bool) -> Void)?
+
+    /// Callback fired when a blocking stretch break should be shown.
+    var onStretchBreak: ((_ durationSeconds: Int) -> Void)?
 
     /// How often we poll for idle state (seconds).
     private let pollInterval: TimeInterval = 5
@@ -38,6 +51,8 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
         if let saved = UserDefaults.standard.object(forKey: "idleThresholdSeconds") as? Double, saved > 0 {
             activityMonitor.idleThresholdSeconds = saved
         }
+        blockingModeEnabled = UserDefaults.standard.object(forKey: "blockingModeEnabled") as? Bool ?? true
+        stretchDurationSeconds = UserDefaults.standard.object(forKey: "stretchDurationSeconds") as? Int ?? 60
     }
 
     // MARK: - Lifecycle
@@ -107,6 +122,14 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
         UNUserNotificationCenter.current().add(request) { error in
             if let error = error {
                 print("Failed to deliver notification: \(error.localizedDescription)")
+            }
+        }
+
+        // Show blocking overlay if enabled
+        if blockingModeEnabled {
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                self.onStretchBreak?(self.stretchDurationSeconds)
             }
         }
     }
