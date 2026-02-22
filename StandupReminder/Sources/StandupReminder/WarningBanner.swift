@@ -36,7 +36,7 @@ struct WarningBannerView: View {
                     .foregroundStyle(.primary)
                     .contentTransition(.numericText())
 
-                Text("Finish your thought — your screen will be blocked soon")
+                Text("Wrap up — stretch break coming up")
                     .font(.system(size: 12))
                     .foregroundStyle(.secondary)
             }
@@ -125,13 +125,13 @@ final class WarningBannerController {
     }
 
     func dismiss() {
-        guard let window else { return }
+        guard let w = window else { return }
+        window = nil // Immediately clear to prevent double-dismiss race
         NSAnimationContext.runAnimationGroup { context in
             context.duration = 0.3
-            window.animator().alphaValue = 0
-        } completionHandler: { [weak self] in
-            self?.window?.orderOut(nil)
-            self?.window = nil
+            w.animator().alphaValue = 0
+        } completionHandler: {
+            w.orderOut(nil)
         }
     }
 }

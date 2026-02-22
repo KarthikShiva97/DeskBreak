@@ -1,5 +1,6 @@
 import Cocoa
 import SwiftUI
+import UserNotifications
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem!
@@ -22,9 +23,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         setupStatusItem()
         setupMenu()
 
-        reminderManager.onTick = { [weak self] totalActive, sinceLast, isActive in
+        reminderManager.onTick = { [weak self] totalActive, sinceLast, isActive, inMeeting in
             DispatchQueue.main.async {
-                self?.updateMenuBarDisplay(totalActive: totalActive, sinceLast: sinceLast, isActive: isActive)
+                self?.updateMenuBarDisplay(totalActive: totalActive, sinceLast: sinceLast, isActive: isActive, inMeeting: inMeeting)
             }
         }
 
@@ -93,7 +94,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         timerMenuItem.isEnabled = false
         menu.addItem(timerMenuItem)
 
-        statusMenuItem = NSMenuItem(title: "Next reminder in: --", action: nil, keyEquivalent: "")
+        statusMenuItem = NSMenuItem(title: "Next break: --", action: nil, keyEquivalent: "")
         statusMenuItem.isEnabled = false
         menu.addItem(statusMenuItem)
 
@@ -170,7 +171,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - Display Updates
 
-    private func updateMenuBarDisplay(totalActive: TimeInterval, sinceLast: TimeInterval, isActive: Bool) {
+    private func updateMenuBarDisplay(totalActive: TimeInterval, sinceLast: TimeInterval, isActive: Bool, inMeeting: Bool) {
+        // Don't overwrite the "Disabled until..." status if a stale tick was queued
+        guard !reminderManager.isDisabled else { return }
+
         let totalMinutes = Int(totalActive) / 60
         let hours = totalMinutes / 60
         let mins = totalMinutes % 60
@@ -195,10 +199,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let remainingMins = Int(remaining) / 60
         let remainingSecs = Int(remaining) % 60
 
-        if isActive {
-            statusMenuItem.title = "Next reminder in: \(remainingMins)m \(remainingSecs)s"
+        if inMeeting {
+            statusMenuItem.title = "In meeting — timer paused"
+        } else if isActive {
+            statusMenuItem.title = "Next break: \(remainingMins)m \(remainingSecs)s"
         } else {
-            statusMenuItem.title = "Status: Idle (paused)"
+            statusMenuItem.title = "Idle — timer paused"
         }
     }
 
@@ -293,7 +299,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             statusItem.button?.title = " OFF"
         } else {
             statusItem.button?.title = " 0m"
-            statusMenuItem.title = "Next reminder in: --"
+            statusMenuItem.title = "Next break: --"
             resumeMenuItem.title = "Resume Tracking"
         }
     }

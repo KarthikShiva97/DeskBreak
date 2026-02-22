@@ -53,7 +53,14 @@ struct StretchOverlayView: View {
 
     var body: some View {
         ZStack {
-            Color.black.opacity(0.88)
+            LinearGradient(
+                colors: [
+                    Color(red: 0.05, green: 0.05, blue: 0.15),
+                    Color(red: 0.10, green: 0.05, blue: 0.20)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
 
             if showCompletion {
                 completionView
@@ -137,7 +144,7 @@ struct StretchOverlayView: View {
 
             if skipEnabled {
                 Button(action: { complete(skipped: true) }) {
-                    Text("I've stretched — let me back in")
+                    Text("Done Stretching")
                         .font(.system(size: 16, weight: .medium))
                         .foregroundStyle(.white)
                         .padding(.horizontal, 24)
@@ -173,7 +180,7 @@ struct StretchOverlayView: View {
                 .font(.system(size: 40, weight: .bold, design: .rounded))
                 .foregroundStyle(.white)
 
-            Text("Your body thanks you. Back to work!")
+            Text("Your spine thanks you")
                 .font(.system(size: 18))
                 .foregroundStyle(.white.opacity(0.7))
         }

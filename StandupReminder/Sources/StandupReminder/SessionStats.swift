@@ -24,7 +24,14 @@ final class SessionStats {
     }
 
     init() {
-        updateDailyStreak()
+        // Only check if the streak was broken (don't increment — that happens on break completion)
+        let today = Self.todayString()
+        let lastActive = defaults.string(forKey: "lastActiveDate") ?? ""
+        let yesterday = Self.yesterdayString()
+        if !lastActive.isEmpty && lastActive != today && lastActive != yesterday {
+            // Streak broken — reset so the menu shows 0 until they complete a break
+            defaults.set(0, forKey: "dailyStreak")
+        }
     }
 
     func recordBreakCompleted() {
@@ -98,18 +105,20 @@ final class SessionStats {
         }
     }
 
+    private static let dateFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "yyyy-MM-dd"
+        return f
+    }()
+
     private static func todayString() -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-        return formatter.string(from: Date())
+        dateFormatter.string(from: Date())
     }
 
     private static func yesterdayString() -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
         guard let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: Date()) else {
             return ""
         }
-        return formatter.string(from: yesterday)
+        return dateFormatter.string(from: yesterday)
     }
 }

@@ -1,3 +1,4 @@
+import ServiceManagement
 import SwiftUI
 
 /// SwiftUI view for configuring reminder settings.
@@ -6,6 +7,7 @@ struct PreferencesView: View {
     @AppStorage("idleThresholdSeconds") private var idleThreshold: Double = 120
     @AppStorage("blockingModeEnabled") private var blockingMode: Bool = true
     @AppStorage("stretchDurationSeconds") private var stretchDuration: Int = 60
+    @AppStorage("launchAtLogin") private var launchAtLogin: Bool = false
 
     /// Called when the user changes settings so the ReminderManager can pick them up.
     var onSettingsChanged: ((_ intervalMinutes: Int, _ idleThreshold: Double, _ blockingMode: Bool, _ stretchDuration: Int) -> Void)?
@@ -51,7 +53,7 @@ struct PreferencesView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             } header: {
-                Text("Reminder Settings")
+                Label("Reminder Settings", systemImage: "timer")
             }
 
             Section {
@@ -75,7 +77,32 @@ struct PreferencesView: View {
                         .foregroundStyle(.secondary)
                 }
             } header: {
-                Text("Break Enforcement")
+                Label("Break Enforcement", systemImage: "hand.raised")
+            }
+
+            Section {
+                Toggle("Launch at login", isOn: $launchAtLogin)
+                    .onChange(of: launchAtLogin) { _, newValue in
+                        do {
+                            if newValue {
+                                try SMAppService.mainApp.register()
+                            } else {
+                                try SMAppService.mainApp.unregister()
+                            }
+                        } catch {
+                            print("Failed to update login item: \(error)")
+                            launchAtLogin = !newValue
+                        }
+                    }
+                    .onAppear {
+                        launchAtLogin = SMAppService.mainApp.status == .enabled
+                    }
+
+                Text("Recommended — the app works best when it starts automatically.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } header: {
+                Label("General", systemImage: "gear")
             }
 
             Section {
@@ -83,16 +110,17 @@ struct PreferencesView: View {
                     Text("Snooze: 2 per break (5min, then 2min)")
                     Text("Posture nudge: silent reminder at halfway")
                     Text("Break Now: Cmd+B in the menu bar")
-                    Text("Screen sharing: overlay auto-deferred")
+                    Text("Meetings: timer pauses during video calls")
+                    Text("Adaptive breaks: duration increases the longer you sit")
                 }
                 .font(.caption)
                 .foregroundStyle(.secondary)
             } header: {
-                Text("How it works")
+                Label("How it works", systemImage: "questionmark.circle")
             }
         }
         .formStyle(.grouped)
-        .frame(width: 420, height: 440)
+        .frame(width: 420, height: 520)
     }
 
     private func notifyChange() {
@@ -109,7 +137,7 @@ final class PreferencesWindowController: NSWindowController {
         let window = NSWindow(contentViewController: hostingController)
         window.title = "StandupReminder Preferences"
         window.styleMask = [.titled, .closable]
-        window.setContentSize(NSSize(width: 420, height: 440))
+        window.setContentSize(NSSize(width: 420, height: 520))
         window.center()
 
         self.init(window: window)
