@@ -1,4 +1,5 @@
 import Cocoa
+import Combine
 import SwiftUI
 
 // MARK: - Stretch exercises shown during the break
@@ -28,23 +29,26 @@ struct StretchOverlayView: View {
 
     @State private var secondsRemaining: Int
     @State private var currentExercise: StretchExercise
-    @State private var timer: Timer?
     @State private var skipEnabled = false
     @State private var overlayOpacity: Double = 0
     @State private var contentScale: Double = 0.9
     @State private var breathingScale: Double = 1.0
     @State private var showCompletion = false
+    @State private var completed = false
+
+    // Use Combine timer instead of Timer.scheduledTimer for SwiftUI safety
+    private let timerPublisher = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     init(stretchDurationSeconds: Int, onComplete: @escaping (_ wasSkipped: Bool) -> Void) {
         self.stretchDurationSeconds = stretchDurationSeconds
         self.onComplete = onComplete
         self._secondsRemaining = State(initialValue: stretchDurationSeconds)
-        self._currentExercise = State(initialValue: exercises.randomElement()!)
+        // Safe default fallback instead of force unwrap
+        self._currentExercise = State(initialValue: exercises.first ?? StretchExercise(name: "Stretch", symbol: "figure.stand", instruction: "Stand up and stretch."))
     }
 
     var body: some View {
         ZStack {
-            // Dimmed background — fades in
             Color.black.opacity(0.88)
 
             if showCompletion {
@@ -58,18 +62,18 @@ struct StretchOverlayView: View {
         }
         .ignoresSafeArea()
         .onAppear {
-            // Fade in smoothly
             withAnimation(.easeOut(duration: 0.6)) {
                 overlayOpacity = 1
                 contentScale = 1.0
             }
-            // Start breathing animation
             withAnimation(.easeInOut(duration: 4).repeatForever(autoreverses: true)) {
                 breathingScale = 1.08
             }
-            startTimer()
         }
-        .onDisappear { timer?.invalidate() }
+        .onReceive(timerPublisher) { _ in
+            guard !completed else { return }
+            tickCountdown()
+        }
     }
 
     // MARK: - Main stretch content
@@ -78,13 +82,11 @@ struct StretchOverlayView: View {
         VStack(spacing: 32) {
             Spacer()
 
-            // Title with breathing effect
             Text("Time to Stretch!")
                 .font(.system(size: 48, weight: .bold, design: .rounded))
                 .foregroundStyle(.white)
                 .scaleEffect(breathingScale)
 
-            // Exercise card
             VStack(spacing: 16) {
                 Image(systemName: currentExercise.symbol)
                     .font(.system(size: 64))
@@ -105,13 +107,11 @@ struct StretchOverlayView: View {
             .background(.ultraThinMaterial.opacity(0.3))
             .clipShape(RoundedRectangle(cornerRadius: 20))
 
-            // Countdown
             Text(formattedTime)
                 .font(.system(size: 72, weight: .bold, design: .monospaced))
                 .foregroundStyle(.white)
                 .contentTransition(.numericText())
 
-            // Progress ring with breathing glow
             ZStack {
                 Circle()
                     .stroke(.white.opacity(0.2), lineWidth: 8)
@@ -131,7 +131,6 @@ struct StretchOverlayView: View {
             }
             .frame(width: 120, height: 120)
 
-            // Skip button (appears after 10 seconds)
             if skipEnabled {
                 Button(action: { complete(skipped: true) }) {
                     Text("I've stretched — let me back in")
@@ -145,7 +144,9 @@ struct StretchOverlayView: View {
                 .buttonStyle(.plain)
                 .transition(.opacity.combined(with: .move(edge: .bottom)))
             } else {
-                Text("Skip available in \(max(0, 10 - (stretchDurationSeconds - secondsRemaining)))s")
+                let elapsed = stretchDurationSeconds - secondsRemaining
+                let skipIn = max(0, 10 - elapsed)
+                Text("Skip available in \(skipIn)s")
                     .font(.caption)
                     .foregroundStyle(.white.opacity(0.4))
             }
@@ -187,41 +188,40 @@ struct StretchOverlayView: View {
         return String(format: "%d:%02d", m, s)
     }
 
-    private func startTimer() {
-        timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
-            if secondsRemaining > 0 {
-                secondsRemaining -= 1
+    private func tickCountdown() {
+        if secondsRemaining > 0 {
+            secondsRemaining -= 1
 
-                // Rotate exercise every 20 seconds
-                let elapsed = stretchDurationSeconds - secondsRemaining
-                if elapsed > 0 && elapsed % 20 == 0 {
-                    withAnimation(.spring(duration: 0.5)) {
-                        currentExercise = exercises.randomElement()!
+            let elapsed = stretchDurationSeconds - secondsRemaining
+            if elapsed > 0 && elapsed % 20 == 0 {
+                withAnimation(.spring(duration: 0.5)) {
+                    if let next = exercises.randomElement() {
+                        currentExercise = next
                     }
                 }
-
-                // Enable skip after 10 seconds
-                if elapsed >= 10 && !skipEnabled {
-                    withAnimation(.spring(duration: 0.4)) {
-                        skipEnabled = true
-                    }
-                }
-            } else {
-                complete(skipped: false)
             }
+
+            if elapsed >= 10 && !skipEnabled {
+                withAnimation(.spring(duration: 0.4)) {
+                    skipEnabled = true
+                }
+            }
+        } else {
+            complete(skipped: false)
         }
     }
 
     private func complete(skipped: Bool) {
-        timer?.invalidate()
-        timer = nil
+        guard !completed else { return }
+        completed = true
 
         if !skipped {
-            // Show completion celebration briefly
             withAnimation(.spring(duration: 0.5)) {
                 showCompletion = true
             }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+            // Use main RunLoop timer for the delayed dismiss — safe because
+            // the view is still alive (overlay window keeps it retained).
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [onComplete] in
                 onComplete(false)
             }
         } else {
@@ -235,9 +235,7 @@ struct StretchOverlayView: View {
 final class StretchOverlayWindowController {
     private var windows: [NSWindow] = []
 
-    /// Shows a full-screen blocking overlay on every screen.
     func show(stretchDurationSeconds: Int, onComplete: @escaping (_ wasSkipped: Bool) -> Void) {
-        // Dismiss any existing overlay first
         dismiss()
 
         var completeCalled = false
@@ -268,18 +266,16 @@ final class StretchOverlayWindowController {
                 screen: screen
             )
             window.contentView = hostingView
-            window.level = .screenSaver // Above almost everything
+            window.level = .screenSaver
             window.isOpaque = false
             window.backgroundColor = .clear
             window.ignoresMouseEvents = false
             window.acceptsMouseMovedEvents = false
             window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
 
-            // Start transparent for fade-in
             window.alphaValue = 0
             window.makeKeyAndOrderFront(nil)
 
-            // Fade the window in
             NSAnimationContext.runAnimationGroup { context in
                 context.duration = 0.5
                 window.animator().alphaValue = 1
@@ -292,6 +288,10 @@ final class StretchOverlayWindowController {
     }
 
     private func animateDismiss(completion: @escaping () -> Void) {
+        guard !windows.isEmpty else {
+            completion()
+            return
+        }
         NSAnimationContext.runAnimationGroup({ context in
             context.duration = 0.4
             for window in windows {

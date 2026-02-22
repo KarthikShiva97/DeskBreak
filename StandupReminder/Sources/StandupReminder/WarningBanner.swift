@@ -1,4 +1,5 @@
 import Cocoa
+import Combine
 import SwiftUI
 
 // MARK: - SwiftUI Warning Banner View
@@ -9,8 +10,9 @@ struct WarningBannerView: View {
     let onSnooze: () -> Void
 
     @State private var countdown: Int
-    @State private var timer: Timer?
     @State private var opacity: Double = 0
+
+    private let timerPublisher = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     init(secondsUntilBreak: Int, canSnooze: Bool, onSnooze: @escaping () -> Void) {
         self.secondsUntilBreak = secondsUntilBreak
@@ -59,17 +61,10 @@ struct WarningBannerView: View {
         .opacity(opacity)
         .onAppear {
             withAnimation(.easeOut(duration: 0.5)) { opacity = 1 }
-            startCountdown()
         }
-        .onDisappear { timer?.invalidate() }
-    }
-
-    private func startCountdown() {
-        timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
+        .onReceive(timerPublisher) { _ in
             if countdown > 0 {
                 withAnimation { countdown -= 1 }
-            } else {
-                timer?.invalidate()
             }
         }
     }
@@ -98,7 +93,6 @@ final class WarningBannerController {
         guard let screen = NSScreen.main else { return }
         let screenFrame = screen.visibleFrame
 
-        // Position at top-center of screen
         let x = screenFrame.midX - 240
         let y = screenFrame.maxY - 90
         let windowFrame = NSRect(x: x, y: y, width: 480, height: 70)
@@ -117,21 +111,24 @@ final class WarningBannerController {
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         panel.orderFrontRegardless()
 
-        // Play a gentle sound
-        NSSound(named: .init("Tink"))?.play()
+        // Play a gentle system sound (graceful fallback if not found)
+        if let sound = NSSound(named: NSSound.Name("Tink")) {
+            sound.play()
+        } else {
+            NSSound.beep()
+        }
 
         window = panel
     }
 
     func dismiss() {
-        if let window {
-            NSAnimationContext.runAnimationGroup { context in
-                context.duration = 0.3
-                window.animator().alphaValue = 0
-            } completionHandler: { [weak self] in
-                self?.window?.orderOut(nil)
-                self?.window = nil
-            }
+        guard let window else { return }
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.3
+            window.animator().alphaValue = 0
+        } completionHandler: { [weak self] in
+            self?.window?.orderOut(nil)
+            self?.window = nil
         }
     }
 }

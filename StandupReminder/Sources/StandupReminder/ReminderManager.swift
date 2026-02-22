@@ -64,13 +64,21 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
     private let pollInterval: TimeInterval = 5
 
     override init() {
+        // Read saved defaults before calling super to avoid triggering didSet
+        let defaults = UserDefaults.standard
+        let savedInterval = defaults.object(forKey: "reminderIntervalMinutes") as? Int ?? 30
+        let savedBlocking = defaults.object(forKey: "blockingModeEnabled") as? Bool ?? true
+        let savedStretchDuration = defaults.object(forKey: "stretchDurationSeconds") as? Int ?? 60
+
+        self.reminderIntervalMinutes = savedInterval
+        self.blockingModeEnabled = savedBlocking
+        self.stretchDurationSeconds = savedStretchDuration
+
         super.init()
-        reminderIntervalMinutes = UserDefaults.standard.object(forKey: "reminderIntervalMinutes") as? Int ?? 30
-        if let saved = UserDefaults.standard.object(forKey: "idleThresholdSeconds") as? Double, saved > 0 {
-            activityMonitor.idleThresholdSeconds = saved
+
+        if let savedIdle = defaults.object(forKey: "idleThresholdSeconds") as? Double, savedIdle > 0 {
+            activityMonitor.idleThresholdSeconds = savedIdle
         }
-        blockingModeEnabled = UserDefaults.standard.object(forKey: "blockingModeEnabled") as? Bool ?? true
-        stretchDurationSeconds = UserDefaults.standard.object(forKey: "stretchDurationSeconds") as? Int ?? 60
     }
 
     // MARK: - Lifecycle
@@ -81,6 +89,10 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
         pollTimer = Timer.scheduledTimer(withTimeInterval: pollInterval, repeats: true) { [weak self] _ in
             self?.tick()
         }
+    }
+
+    deinit {
+        pollTimer?.invalidate()
     }
 
     func stop() {

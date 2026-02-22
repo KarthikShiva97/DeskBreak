@@ -107,7 +107,9 @@ final class SessionStats {
     private static func yesterdayString() -> String {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
-        let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: Date())!
+        guard let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: Date()) else {
+            return ""
+        }
         return formatter.string(from: yesterday)
     }
 }
