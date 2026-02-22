@@ -6,10 +6,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let reminderManager = ReminderManager()
     private var preferencesWindowController: PreferencesWindowController?
     private let stretchOverlay = StretchOverlayWindowController()
+    private let warningBanner = WarningBannerController()
 
     // Menu items we update dynamically
     private var timerMenuItem: NSMenuItem!
     private var statusMenuItem: NSMenuItem!
+    private var streakMenuItem: NSMenuItem!
+    private var breaksMenuItem: NSMenuItem!
     private var toggleMenuItem: NSMenuItem!
 
     private var isTracking = true
@@ -26,9 +29,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
 
+        reminderManager.onWarning = { [weak self] secondsUntilBreak, canSnooze in
+            self?.warningBanner.show(secondsUntilBreak: secondsUntilBreak, canSnooze: canSnooze) { [weak self] in
+                self?.reminderManager.snooze()
+            }
+        }
+
+        reminderManager.onDismissWarning = { [weak self] in
+            self?.warningBanner.dismiss()
+        }
+
         reminderManager.onStretchBreak = { [weak self] durationSeconds in
-            self?.stretchOverlay.show(stretchDurationSeconds: durationSeconds) {
-                // Stretch complete — tracking already resumed via tick timer
+            self?.stretchOverlay.show(stretchDurationSeconds: durationSeconds) { [weak self] wasSkipped in
+                if wasSkipped {
+                    self?.reminderManager.stats.recordBreakSkipped()
+                } else {
+                    self?.reminderManager.stats.recordBreakCompleted()
+                }
+                self?.updateStatsMenuItems()
             }
         }
 
@@ -37,6 +55,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         reminderManager.stop()
+        showSessionSummaryIfNeeded()
     }
 
     // MARK: - Status Bar
@@ -65,6 +84,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusMenuItem = NSMenuItem(title: "Next reminder in: --", action: nil, keyEquivalent: "")
         statusMenuItem.isEnabled = false
         menu.addItem(statusMenuItem)
+
+        menu.addItem(.separator())
+
+        breaksMenuItem = NSMenuItem(title: "Breaks today: 0", action: nil, keyEquivalent: "")
+        breaksMenuItem.isEnabled = false
+        menu.addItem(breaksMenuItem)
+
+        streakMenuItem = NSMenuItem(title: "Streak: \(reminderManager.stats.dailyStreak) day(s)", action: nil, keyEquivalent: "")
+        streakMenuItem.isEnabled = false
+        menu.addItem(streakMenuItem)
 
         menu.addItem(.separator())
 
@@ -124,6 +153,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         } else {
             statusMenuItem.title = "Status: Idle (paused)"
         }
+    }
+
+    private func updateStatsMenuItems() {
+        let stats = reminderManager.stats
+        breaksMenuItem.title = "Breaks today: \(stats.breaksCompleted) completed, \(stats.breaksSkipped) skipped"
+        let streak = stats.dailyStreak
+        streakMenuItem.title = "Streak: \(streak) day\(streak == 1 ? "" : "s")"
+    }
+
+    // MARK: - Session Summary on Quit
+
+    private func showSessionSummaryIfNeeded() {
+        let stats = reminderManager.stats
+        // Only show if the user actually did some work
+        guard reminderManager.totalActiveSeconds > 60 else { return }
+
+        let summary = stats.sessionSummary(totalWorkSeconds: reminderManager.totalActiveSeconds)
+
+        let alert = NSAlert()
+        alert.messageText = "Session Complete"
+        alert.informativeText = summary
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "OK")
+        alert.icon = NSImage(systemSymbolName: "figure.stand", accessibilityDescription: nil)
+        alert.runModal()
     }
 
     // MARK: - Actions
