@@ -54,6 +54,15 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
     /// Whether posture nudge has been shown for the current cycle.
     private var postureNudgeShownThisCycle = false
 
+    /// Timer that re-enables tracking after a timed disable.
+    private var resumeTimer: Timer?
+
+    /// When the timed disable expires (nil = not disabled).
+    private(set) var disabledUntil: Date?
+
+    /// Callback when timed disable starts/ends so the UI can update.
+    var onDisableStateChanged: ((_ disabled: Bool, _ until: Date?) -> Void)?
+
     /// Callback fired every poll tick so the UI can update the displayed time.
     var onTick: ((_ totalActive: TimeInterval, _ sinceLast: TimeInterval, _ isActive: Bool) -> Void)?
 
@@ -101,11 +110,51 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
 
     deinit {
         pollTimer?.invalidate()
+        resumeTimer?.invalidate()
     }
 
     func stop() {
         pollTimer?.invalidate()
         pollTimer = nil
+    }
+
+    /// Disable tracking for a fixed duration, then auto-resume.
+    func disableFor(minutes: Int) {
+        stop()
+        let until = Date().addingTimeInterval(TimeInterval(minutes * 60))
+        disabledUntil = until
+        onDisableStateChanged?(true, until)
+
+        resumeTimer?.invalidate()
+        resumeTimer = Timer.scheduledTimer(withTimeInterval: TimeInterval(minutes * 60), repeats: false) { [weak self] _ in
+            self?.resumeFromDisable()
+        }
+    }
+
+    /// Disable tracking indefinitely until manually resumed.
+    func disableIndefinitely() {
+        stop()
+        disabledUntil = .distantFuture
+        resumeTimer?.invalidate()
+        resumeTimer = nil
+        onDisableStateChanged?(true, .distantFuture)
+    }
+
+    /// Resume tracking (called by auto-timer or manually).
+    func resumeFromDisable() {
+        resumeTimer?.invalidate()
+        resumeTimer = nil
+        disabledUntil = nil
+        activeSecondsSinceLastReminder = 0
+        snoozesUsedThisCycle = 0
+        warningShownThisCycle = false
+        postureNudgeShownThisCycle = false
+        start()
+        onDisableStateChanged?(false, nil)
+    }
+
+    var isDisabled: Bool {
+        disabledUntil != nil
     }
 
     func resetSession() {

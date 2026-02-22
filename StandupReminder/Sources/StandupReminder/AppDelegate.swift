@@ -13,9 +13,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusMenuItem: NSMenuItem!
     private var streakMenuItem: NSMenuItem!
     private var breaksMenuItem: NSMenuItem!
-    private var toggleMenuItem: NSMenuItem!
-
-    private var isTracking = true
+    private var disableMenuItem: NSMenuItem!
+    private var resumeMenuItem: NSMenuItem!
 
     // MARK: - App Lifecycle
 
@@ -57,6 +56,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         reminderManager.onPostureNudge = { [weak self] in
             self?.showPostureNudge()
+        }
+
+        reminderManager.onDisableStateChanged = { [weak self] disabled, until in
+            self?.updateDisableUI(disabled: disabled, until: until)
         }
 
         reminderManager.start()
@@ -111,9 +114,40 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         breakNowItem.target = self
         menu.addItem(breakNowItem)
 
-        toggleMenuItem = NSMenuItem(title: "Pause Tracking", action: #selector(toggleTracking), keyEquivalent: "p")
-        toggleMenuItem.target = self
-        menu.addItem(toggleMenuItem)
+        // "Disable for..." submenu
+        disableMenuItem = NSMenuItem(title: "Disable for…", action: nil, keyEquivalent: "")
+        let disableSubmenu = NSMenu()
+
+        let disable15 = NSMenuItem(title: "15 minutes", action: #selector(disable15min), keyEquivalent: "")
+        disable15.target = self
+        disableSubmenu.addItem(disable15)
+
+        let disable30 = NSMenuItem(title: "30 minutes", action: #selector(disable30min), keyEquivalent: "")
+        disable30.target = self
+        disableSubmenu.addItem(disable30)
+
+        let disable60 = NSMenuItem(title: "1 hour", action: #selector(disable1hr), keyEquivalent: "")
+        disable60.target = self
+        disableSubmenu.addItem(disable60)
+
+        let disable120 = NSMenuItem(title: "2 hours", action: #selector(disable2hr), keyEquivalent: "")
+        disable120.target = self
+        disableSubmenu.addItem(disable120)
+
+        disableSubmenu.addItem(.separator())
+
+        let disableRest = NSMenuItem(title: "Until I turn it back on", action: #selector(disableIndefinitely), keyEquivalent: "")
+        disableRest.target = self
+        disableSubmenu.addItem(disableRest)
+
+        disableMenuItem.submenu = disableSubmenu
+        menu.addItem(disableMenuItem)
+
+        // "Resume" item — hidden until disabled
+        resumeMenuItem = NSMenuItem(title: "Resume Tracking", action: #selector(resumeTracking), keyEquivalent: "p")
+        resumeMenuItem.target = self
+        resumeMenuItem.isHidden = true
+        menu.addItem(resumeMenuItem)
 
         let resetItem = NSMenuItem(title: "Reset Session", action: #selector(resetSession), keyEquivalent: "r")
         resetItem.target = self
@@ -231,15 +265,36 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         reminderManager.triggerBreakNow()
     }
 
-    @objc private func toggleTracking() {
-        isTracking.toggle()
-        if isTracking {
-            reminderManager.start()
-            toggleMenuItem.title = "Pause Tracking"
+    @objc private func disable15min() { reminderManager.disableFor(minutes: 15) }
+    @objc private func disable30min() { reminderManager.disableFor(minutes: 30) }
+    @objc private func disable1hr() { reminderManager.disableFor(minutes: 60) }
+    @objc private func disable2hr() { reminderManager.disableFor(minutes: 120) }
+    @objc private func disableIndefinitely() { reminderManager.disableIndefinitely() }
+
+    @objc private func resumeTracking() {
+        reminderManager.resumeFromDisable()
+    }
+
+    private func updateDisableUI(disabled: Bool, until: Date?) {
+        disableMenuItem.isHidden = disabled
+        resumeMenuItem.isHidden = !disabled
+
+        if disabled {
+            if let until, until != .distantFuture {
+                let formatter = DateFormatter()
+                formatter.dateFormat = "h:mm a"
+                let timeStr = formatter.string(from: until)
+                statusMenuItem.title = "Disabled until \(timeStr)"
+                resumeMenuItem.title = "Resume Tracking (auto at \(timeStr))"
+            } else {
+                statusMenuItem.title = "Disabled — click Resume to restart"
+                resumeMenuItem.title = "Resume Tracking"
+            }
+            statusItem.button?.title = " OFF"
         } else {
-            reminderManager.stop()
-            toggleMenuItem.title = "Resume Tracking"
-            statusMenuItem.title = "Status: Paused"
+            statusItem.button?.title = " 0m"
+            statusMenuItem.title = "Next reminder in: --"
+            resumeMenuItem.title = "Resume Tracking"
         }
     }
 
