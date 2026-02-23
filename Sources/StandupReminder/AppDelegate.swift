@@ -65,10 +65,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         reminderManager.start()
+
+        // Start the auto-updater
+        AutoUpdater.shared.startPeriodicChecks()
     }
 
     func applicationWillTerminate(_ notification: Notification) {
         reminderManager.stop()
+        AutoUpdater.shared.stopPeriodicChecks()
         showSessionSummaryIfNeeded()
     }
 
@@ -157,6 +161,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(resetItem)
 
         menu.addItem(.separator())
+
+        let updateItem = NSMenuItem(title: "Check for Updates…", action: #selector(checkForUpdates), keyEquivalent: "u")
+        updateItem.target = self
+        menu.addItem(updateItem)
 
         let prefsItem = NSMenuItem(title: "Preferences…", action: #selector(openPreferences), keyEquivalent: ",")
         prefsItem.target = self
@@ -319,6 +327,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         timerMenuItem.title = "Working: 0m"
         statusMenuItem.title = "Next break: --"
         updateStatsMenuItems()
+    }
+
+    @objc private func checkForUpdates() {
+        AutoUpdater.shared.checkForUpdates(userInitiated: true)
     }
 
     @objc private func openPreferences() {
