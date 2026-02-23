@@ -6,6 +6,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem!
     private let reminderManager = ReminderManager()
     private var preferencesWindowController: PreferencesWindowController?
+    private var timelineWindowController: DailyTimelineWindowController?
     private let stretchOverlay = StretchOverlayWindowController()
     private let warningBanner = WarningBannerController()
 
@@ -70,6 +71,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         reminderManager.start()
 
+        // Prune old timeline files in the background
+        DispatchQueue.global(qos: .utility).async {
+            DailyTimelineStore.pruneOldFiles()
+        }
+
         // Start the auto-updater
         AutoUpdater.shared.startPeriodicChecks()
     }
@@ -117,6 +123,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         streakMenuItem = NSMenuItem(title: "Streak: \(streak) day\(streak == 1 ? "" : "s")", action: nil, keyEquivalent: "")
         streakMenuItem.isEnabled = false
         menu.addItem(streakMenuItem)
+
+        let timelineItem = NSMenuItem(title: "Today's Timeline…", action: #selector(openTimeline), keyEquivalent: "t")
+        timelineItem.target = self
+        menu.addItem(timelineItem)
 
         menu.addItem(.separator())
 
@@ -410,6 +420,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func checkForUpdates() {
         AutoUpdater.shared.checkForUpdates(userInitiated: true)
+    }
+
+    @objc private func openTimeline() {
+        // Recreate each time so the view picks up the latest events
+        timelineWindowController = DailyTimelineWindowController(
+            store: reminderManager.timeline,
+            totalActiveSeconds: reminderManager.totalActiveSeconds
+        )
+        timelineWindowController?.showWindow()
     }
 
     @objc private func openPreferences() {
