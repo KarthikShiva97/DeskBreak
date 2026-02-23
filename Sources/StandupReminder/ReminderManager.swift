@@ -81,6 +81,14 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
     /// Previous tick's meeting state — used to detect meeting start/end transitions.
     private var wasInMeeting = false
 
+    /// Consecutive ticks where isInMeeting() returned false while previously in a meeting.
+    /// Debounces meeting-end detection so brief audio dropouts don't cause flicker.
+    private var meetingEndDebounceCount: Int = 0
+
+    /// Consecutive non-meeting ticks required before recording meetingEnded.
+    /// 3 ticks × 5s poll interval = 15 seconds of grace period.
+    private static let meetingEndDebounceTicks = 3
+
     // MARK: - Continuous Idle Tracker
 
     /// Continuous seconds the user has been detected as idle (no input).
@@ -250,6 +258,7 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
         firmHealthWarningShown = false
         urgentHealthWarningShown = false
         lastUrgentWarningAt = 0
+        meetingEndDebounceCount = 0
         breakCyclesToday = 0
         start()
         timeline.record(.resumed)
@@ -271,6 +280,7 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
         firmHealthWarningShown = false
         urgentHealthWarningShown = false
         lastUrgentWarningAt = 0
+        meetingEndDebounceCount = 0
         breakCyclesToday = 0
         breakInProgress = false
         stats.resetSession()
@@ -447,7 +457,22 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
 
     private func tick() {
         let active = activityMonitor.isUserActive()
-        let inMeeting = isInMeeting()
+
+        // Debounce meeting-end detection: brief audio dropouts (e.g. mic
+        // flicker) shouldn't cause a false meetingEnded → meetingStarted
+        // cycle.  We require several consecutive "not in meeting" ticks
+        // before committing to the transition.
+        let rawInMeeting = isInMeeting()
+        let inMeeting: Bool
+        if rawInMeeting {
+            meetingEndDebounceCount = 0
+            inMeeting = true
+        } else if wasInMeeting {
+            meetingEndDebounceCount += 1
+            inMeeting = meetingEndDebounceCount < Self.meetingEndDebounceTicks
+        } else {
+            inMeeting = false
+        }
 
         // Record timeline transitions (idle ↔ active, meeting start/end)
         if active && !wasActive && !breakInProgress {
