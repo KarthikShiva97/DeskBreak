@@ -8,6 +8,7 @@ struct PreferencesView: View {
     @AppStorage("blockingModeEnabled") private var blockingMode: Bool = true
     @AppStorage("stretchDurationSeconds") private var stretchDuration: Int = 60
     @AppStorage("launchAtLogin") private var launchAtLogin: Bool = false
+    @AppStorage("autoUpdater_enabled") private var autoUpdateEnabled: Bool = true
 
     /// Called when the user changes settings so the ReminderManager can pick them up.
     var onSettingsChanged: ((_ intervalMinutes: Int, _ idleThreshold: Double, _ blockingMode: Bool, _ stretchDuration: Int) -> Void)?
@@ -101,6 +102,15 @@ struct PreferencesView: View {
                 Text("Recommended — the app works best when it starts automatically.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+
+                Toggle("Automatically check for updates", isOn: $autoUpdateEnabled)
+                    .onChange(of: autoUpdateEnabled) { _, newValue in
+                        AutoUpdater.shared.isAutoUpdateEnabled = newValue
+                    }
+
+                Text("Checks for new versions on GitHub every few hours and prompts you to update.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             } header: {
                 Label("General", systemImage: "gear")
             }
@@ -120,7 +130,7 @@ struct PreferencesView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 420, height: 520)
+        .frame(width: 420, height: 580)
     }
 
     private func notifyChange() {
@@ -137,7 +147,7 @@ final class PreferencesWindowController: NSWindowController {
         let window = NSWindow(contentViewController: hostingController)
         window.title = "StandupReminder Preferences"
         window.styleMask = [.titled, .closable]
-        window.setContentSize(NSSize(width: 420, height: 520))
+        window.setContentSize(NSSize(width: 420, height: 580))
         window.center()
 
         self.init(window: window)
