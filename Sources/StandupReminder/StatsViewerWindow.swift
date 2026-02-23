@@ -13,13 +13,9 @@ struct StatsViewerView: View {
     @State private var selectedDate: Date = Date()
     @State private var weekStartDate: Date = Calendar.current.startOfWeek(for: Date())
 
-    /// Live session stats passed from the app so "Today" reflects the running session.
-    var liveBreaksCompleted: Int = 0
-    var liveBreaksSkipped: Int = 0
-    var liveBreaksSnoozed: Int = 0
-    var liveHealthWarnings: Int = 0
-    var liveLongestSitting: TimeInterval = 0
-    var liveTotalWorkSeconds: TimeInterval = 0
+    /// Timeline store for the "Today" tab (replaces the old summary-only view).
+    let timelineStore: DailyTimelineStore
+    let totalActiveSeconds: TimeInterval
 
     var body: some View {
         VStack(spacing: 0) {
@@ -35,13 +31,9 @@ struct StatsViewerView: View {
 
             switch selectedTab {
             case .today:
-                TodayStatsView(
-                    breaksCompleted: liveBreaksCompleted,
-                    breaksSkipped: liveBreaksSkipped,
-                    breaksSnoozed: liveBreaksSnoozed,
-                    healthWarnings: liveHealthWarnings,
-                    longestSitting: liveLongestSitting,
-                    totalWorkSeconds: liveTotalWorkSeconds
+                DailyTimelineView(
+                    store: timelineStore,
+                    totalActiveSeconds: totalActiveSeconds
                 )
             case .daily:
                 DailyStatsView(selectedDate: $selectedDate)
@@ -49,41 +41,7 @@ struct StatsViewerView: View {
                 WeeklyStatsView(weekStart: $weekStartDate)
             }
         }
-        .frame(width: 440, height: 480)
-    }
-}
-
-// MARK: - Today Stats
-
-private struct TodayStatsView: View {
-    let breaksCompleted: Int
-    let breaksSkipped: Int
-    let breaksSnoozed: Int
-    let healthWarnings: Int
-    let longestSitting: TimeInterval
-    let totalWorkSeconds: TimeInterval
-
-    var body: some View {
-        ScrollView {
-            VStack(spacing: 16) {
-                Text(Date(), format: .dateTime.weekday(.wide).month(.wide).day())
-                    .font(.headline)
-                    .foregroundStyle(.secondary)
-                    .padding(.top, 12)
-
-                StatsGrid(
-                    breaksCompleted: breaksCompleted,
-                    breaksSkipped: breaksSkipped,
-                    breaksSnoozed: breaksSnoozed,
-                    healthWarnings: healthWarnings,
-                    longestSitting: longestSitting,
-                    totalWorkSeconds: totalWorkSeconds
-                )
-
-                Spacer()
-            }
-            .padding()
-        }
+        .frame(minWidth: 520, idealWidth: 600, minHeight: 500, idealHeight: 640)
     }
 }
 
@@ -295,7 +253,7 @@ private struct DailyBreakdownChart: View {
     }
 }
 
-// MARK: - Reusable Stats Grid
+// MARK: - Reusable Stats Grid (used by Daily and Weekly tabs)
 
 private struct StatsGrid: View {
     let breaksCompleted: Int
@@ -369,29 +327,18 @@ extension Calendar {
 // MARK: - Window Controller
 
 final class StatsViewerWindowController: NSWindowController {
-    convenience init(
-        breaksCompleted: Int,
-        breaksSkipped: Int,
-        breaksSnoozed: Int,
-        healthWarnings: Int,
-        longestSitting: TimeInterval,
-        totalWorkSeconds: TimeInterval
-    ) {
+    convenience init(store: DailyTimelineStore, totalActiveSeconds: TimeInterval) {
         let view = StatsViewerView(
-            liveBreaksCompleted: breaksCompleted,
-            liveBreaksSkipped: breaksSkipped,
-            liveBreaksSnoozed: breaksSnoozed,
-            liveHealthWarnings: healthWarnings,
-            liveLongestSitting: longestSitting,
-            liveTotalWorkSeconds: totalWorkSeconds
+            timelineStore: store,
+            totalActiveSeconds: totalActiveSeconds
         )
         let hostingController = NSHostingController(rootView: view)
 
         let window = NSWindow(contentViewController: hostingController)
         window.title = "DeskBreak Stats"
-        window.styleMask = [.titled, .closable, .resizable]
-        window.setContentSize(NSSize(width: 440, height: 480))
-        window.minSize = NSSize(width: 380, height: 400)
+        window.styleMask = [.titled, .closable, .resizable, .miniaturizable]
+        window.setContentSize(NSSize(width: 600, height: 640))
+        window.minSize = NSSize(width: 480, height: 400)
         window.center()
 
         self.init(window: window)

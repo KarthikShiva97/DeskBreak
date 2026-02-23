@@ -359,25 +359,3 @@ private struct EventRow: View {
     }
 }
 
-// MARK: - Window Controller
-
-final class DailyTimelineWindowController: NSWindowController {
-    convenience init(store: DailyTimelineStore, totalActiveSeconds: TimeInterval) {
-        let view = DailyTimelineView(store: store, totalActiveSeconds: totalActiveSeconds)
-        let hostingController = NSHostingController(rootView: view)
-
-        let window = NSWindow(contentViewController: hostingController)
-        window.title = "Today's Timeline — DeskBreak"
-        window.styleMask = [.titled, .closable, .resizable, .miniaturizable]
-        window.setContentSize(NSSize(width: 600, height: 640))
-        window.minSize = NSSize(width: 480, height: 400)
-        window.center()
-
-        self.init(window: window)
-    }
-
-    func showWindow() {
-        window?.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
-    }
-}

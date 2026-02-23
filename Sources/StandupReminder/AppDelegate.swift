@@ -7,7 +7,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let reminderManager = ReminderManager()
     private var preferencesWindowController: PreferencesWindowController?
     private var statsWindowController: StatsViewerWindowController?
-    private var timelineWindowController: DailyTimelineWindowController?
     private let stretchOverlay = StretchOverlayWindowController()
     private let warningBanner = WarningBannerController()
 
@@ -132,10 +131,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let statsItem = NSMenuItem(title: "View Stats…", action: #selector(openStats), keyEquivalent: "s")
         statsItem.target = self
         menu.addItem(statsItem)
-
-        let timelineItem = NSMenuItem(title: "Today's Timeline…", action: #selector(openTimeline), keyEquivalent: "t")
-        timelineItem.target = self
-        menu.addItem(timelineItem)
 
         menu.addItem(.separator())
 
@@ -431,15 +426,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         AutoUpdater.shared.checkForUpdates(userInitiated: true)
     }
 
-    @objc private func openTimeline() {
-        // Recreate each time so the view picks up the latest events
-        timelineWindowController = DailyTimelineWindowController(
-            store: reminderManager.timeline,
-            totalActiveSeconds: reminderManager.totalActiveSeconds
-        )
-        timelineWindowController?.showWindow()
-    }
-
     @objc private func openPreferences() {
         if preferencesWindowController == nil {
             preferencesWindowController = PreferencesWindowController { [weak self] interval, idle, blocking, stretchDuration in
@@ -453,15 +439,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func openStats() {
-        let stats = reminderManager.stats
-        // Re-create each time so live values are fresh
+        // Re-create each time so the timeline and live values are fresh
         statsWindowController = StatsViewerWindowController(
-            breaksCompleted: stats.breaksCompleted,
-            breaksSkipped: stats.breaksSkipped,
-            breaksSnoozed: stats.breaksSnoozed,
-            healthWarnings: stats.healthWarningsReceived,
-            longestSitting: stats.longestContinuousSittingSeconds,
-            totalWorkSeconds: reminderManager.totalActiveSeconds
+            store: reminderManager.timeline,
+            totalActiveSeconds: reminderManager.totalActiveSeconds
         )
         statsWindowController?.showWindow()
     }
