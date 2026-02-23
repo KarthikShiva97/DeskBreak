@@ -13,6 +13,9 @@ final class SessionStats {
     /// Breaks snoozed in this session.
     private(set) var breaksSnoozed: Int = 0
 
+    /// Number of breaks where the user was caught still at their keyboard.
+    private(set) var sittingDetectedDuringBreaks: Int = 0
+
     /// Consecutive days with at least one completed break.
     var dailyStreak: Int {
         defaults.integer(forKey: "dailyStreak")
@@ -48,10 +51,15 @@ final class SessionStats {
         breaksSnoozed += 1
     }
 
+    func recordSittingDetected() {
+        sittingDetectedDuringBreaks += 1
+    }
+
     func resetSession() {
         breaksCompleted = 0
         breaksSkipped = 0
         breaksSnoozed = 0
+        sittingDetectedDuringBreaks = 0
     }
 
     /// Summary string shown in the menu bar and on quit.
@@ -74,6 +82,10 @@ final class SessionStats {
         }
         if breaksSnoozed > 0 {
             lines.append("Breaks snoozed: \(breaksSnoozed)")
+        }
+
+        if sittingDetectedDuringBreaks > 0 {
+            lines.append("Sitting detected during break: \(sittingDetectedDuringBreaks)\u{00D7}")
         }
 
         lines.append("Daily streak: \(dailyStreak) day\(dailyStreak == 1 ? "" : "s")")
