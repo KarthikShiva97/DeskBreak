@@ -4,6 +4,27 @@ import Foundation
 import UserNotifications
 
 /// Tracks cumulative work time and fires standup reminder notifications.
+///
+/// ## State Architecture
+///
+/// The reminder system's state is organized into three layers:
+///
+/// 1. **Operating mode** — determined by `breakInProgress` and `disabledUntil`:
+///    - *Tracking*: normal operation, polling for activity
+///    - *On break*: stretch overlay is showing, work time paused
+///    - *Disabled*: polling stopped, either timed or indefinite
+///
+/// 2. **Break cycle** (`breakCycle: BreakCycleState`) — tracks progress toward
+///    the next break: snooze count, warning/nudge-shown flags. Resets when a
+///    break fires, when idle exceeds stretch duration, or on session reset.
+///
+/// 3. **Sitting tracker** (`sitting: SittingTracker`) — monitors continuous
+///    sitting duration and health warning state. Resets when a break is
+///    completed or the user goes idle outside a meeting.
+///
+/// Each tick samples two inputs — `active` (HID idle time) and `inMeeting`
+/// (running meeting app + active microphone) — then updates timers and
+/// checks alert thresholds.
 final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
     private let activityMonitor = ActivityMonitor()
     private var pollTimer: Timer?
@@ -44,16 +65,13 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
     /// Seconds of warning before the full block. Defaults to 30.
     let warningLeadTimeSeconds: TimeInterval = 30
 
-    /// Number of snoozes used this cycle. Max 2: first = 5min, second = 2min.
-    private var snoozesUsedThisCycle: Int = 0
-    private static let maxSnoozesPerCycle = 2
-    private static let snoozeDurations: [TimeInterval] = [5 * 60, 2 * 60]
+    // MARK: - State (see ReminderState.swift)
 
-    /// Whether the warning has been shown for the current cycle.
-    private var warningShownThisCycle = false
+    /// Per-break-cycle state: snooze count, warning/nudge flags.
+    private var breakCycle = BreakCycleState()
 
-    /// Whether posture nudge has been shown for the current cycle.
-    private var postureNudgeShownThisCycle = false
+    /// Continuous sitting duration and health warning flags.
+    private var sitting = SittingTracker()
 
     /// Number of break cycles completed today (used for adaptive break duration).
     private var breakCyclesToday: Int = 0
@@ -88,31 +106,18 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
     /// an equivalent rest and the work timer resets automatically.
     private var continuousIdleSeconds: TimeInterval = 0
 
-    // MARK: - Continuous Sitting Tracker
-
-    /// Continuous seconds the user has been sitting without completing a break.
-    /// Unlike activeSecondsSinceLastReminder, this only resets when a break is
-    /// actually completed or the user goes idle — not when a break is skipped.
-    private(set) var continuousSittingSeconds: TimeInterval = 0
-
-    /// Whether the firm health warning (60 min) has fired this sitting period.
-    private var firmHealthWarningShown = false
-
-    /// Whether the urgent health warning (90 min) has fired this sitting period.
-    private var urgentHealthWarningShown = false
-
-    /// Timestamp (in continuousSittingSeconds) of last urgent notification, for repeats.
-    private var lastUrgentWarningAt: TimeInterval = 0
-
-    /// Health warning thresholds.
-    private static let firmWarningThreshold: TimeInterval = 60 * 60    // 60 minutes
-    private static let urgentWarningThreshold: TimeInterval = 90 * 60  // 90 minutes
-    private static let urgentRepeatInterval: TimeInterval = 10 * 60    // repeat every 10 min after 90
+    // MARK: - Forwarding Properties
 
     /// Whether the user is in the urgent continuous sitting state (90+ min without a completed break).
-    var isUrgentSittingWarning: Bool {
-        continuousSittingSeconds >= Self.urgentWarningThreshold
-    }
+    var isUrgentSittingWarning: Bool { sitting.isUrgent }
+
+    /// Continuous seconds the user has been sitting without completing a break.
+    var continuousSittingSeconds: TimeInterval { sitting.continuousSeconds }
+
+    var canSnooze: Bool { breakCycle.canSnooze }
+
+    /// Human-readable description of the next snooze duration.
+    var nextSnoozeLabel: String { breakCycle.nextSnoozeLabel }
 
     // MARK: - Callbacks
 
@@ -243,13 +248,8 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
         disabledUntil = nil
         activeSecondsSinceLastReminder = 0
         continuousIdleSeconds = 0
-        continuousSittingSeconds = 0
-        snoozesUsedThisCycle = 0
-        warningShownThisCycle = false
-        postureNudgeShownThisCycle = false
-        firmHealthWarningShown = false
-        urgentHealthWarningShown = false
-        lastUrgentWarningAt = 0
+        breakCycle.reset()
+        sitting.reset()
         breakCyclesToday = 0
         start()
         timeline.record(.resumed)
@@ -264,13 +264,8 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
         activeSecondsSinceLastReminder = 0
         totalActiveSeconds = 0
         continuousIdleSeconds = 0
-        continuousSittingSeconds = 0
-        snoozesUsedThisCycle = 0
-        warningShownThisCycle = false
-        postureNudgeShownThisCycle = false
-        firmHealthWarningShown = false
-        urgentHealthWarningShown = false
-        lastUrgentWarningAt = 0
+        breakCycle.reset()
+        sitting.reset()
         breakCyclesToday = 0
         breakInProgress = false
         stats.resetSession()
@@ -286,10 +281,7 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
         breakInProgress = false
         timeline.record(completed ? .breakCompleted : .breakSkipped)
         if completed {
-            continuousSittingSeconds = 0
-            firmHealthWarningShown = false
-            urgentHealthWarningShown = false
-            lastUrgentWarningAt = 0
+            sitting.reset()
         }
     }
 
@@ -297,9 +289,7 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
     func triggerBreakNow() {
         // Reset state BEFORE dispatching to avoid race with tick()
         activeSecondsSinceLastReminder = 0
-        snoozesUsedThisCycle = 0
-        warningShownThisCycle = false
-        postureNudgeShownThisCycle = false
+        breakCycle.reset()
 
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
@@ -313,10 +303,10 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
 
     /// Snooze the current break. First snooze = 5min, second = 2min.
     func snooze() {
-        guard snoozesUsedThisCycle < Self.maxSnoozesPerCycle else { return }
-        let snoozeAmount = Self.snoozeDurations[snoozesUsedThisCycle]
-        snoozesUsedThisCycle += 1
-        warningShownThisCycle = false
+        guard breakCycle.canSnooze else { return }
+        let snoozeAmount = breakCycle.nextSnoozeDuration
+        breakCycle.snoozesUsed += 1
+        breakCycle.warningShown = false  // allow warning to re-show before next break
         stats.recordBreakSnoozed()
         timeline.record(.breakSnoozed, detail: "\(Int(snoozeAmount / 60))m")
         activeSecondsSinceLastReminder = max(0, activeSecondsSinceLastReminder - snoozeAmount)
@@ -324,17 +314,6 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
         DispatchQueue.main.async { [weak self] in
             self?.onDismissWarning?()
         }
-    }
-
-    var canSnooze: Bool {
-        snoozesUsedThisCycle < Self.maxSnoozesPerCycle
-    }
-
-    /// Human-readable description of the next snooze duration.
-    var nextSnoozeLabel: String {
-        guard canSnooze else { return "" }
-        let seconds = Self.snoozeDurations[snoozesUsedThisCycle]
-        return "\(Int(seconds / 60))m"
     }
 
     /// Adaptive break duration: increases by 15s per cycle, capped at 120s or
@@ -449,16 +428,33 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
         let active = activityMonitor.isUserActive()
         let inMeeting = isInMeeting()
 
-        // Record timeline transitions — meeting state takes priority over
-        // work state.  Work transitions are suppressed while a meeting is
-        // active (current or previous tick) so that idle fluctuations during
-        // a call don't produce spurious workStarted/workEnded events or
-        // cause meetingStarted to fire a second time after a brief mic drop.
+        recordTransitions(active: active, inMeeting: inMeeting)
+        updateTimers(active: active, inMeeting: inMeeting)
+
+        onTick?(totalActiveSeconds, activeSecondsSinceLastReminder, active, inMeeting)
+
+        let thresholdSeconds = TimeInterval(reminderIntervalMinutes) * 60
+        let timeUntilBreak = thresholdSeconds - activeSecondsSinceLastReminder
+
+        checkPostureNudge(active: active, inMeeting: inMeeting, timeUntilBreak: timeUntilBreak, thresholdSeconds: thresholdSeconds)
+        checkWarningBanner(active: active, inMeeting: inMeeting, timeUntilBreak: timeUntilBreak)
+        checkHealthWarnings(inMeeting: inMeeting)
+        checkBreakThreshold(active: active, inMeeting: inMeeting, thresholdSeconds: thresholdSeconds)
+    }
+
+    // MARK: - Tick: Record Transitions
+
+    /// Record timeline events for state transitions.
+    private func recordTransitions(active: Bool, inMeeting: Bool) {
+        // Meeting transitions take priority over work transitions.
+        // Work transitions are suppressed while a meeting is active
+        // (current or previous tick) to avoid spurious events.
         if inMeeting && !wasInMeeting {
             timeline.record(.meetingStarted)
         } else if !inMeeting && wasInMeeting {
             timeline.record(.meetingEnded)
         }
+
         if !inMeeting && !wasInMeeting && !breakInProgress {
             if active && !wasActive {
                 timeline.record(.workStarted)
@@ -466,26 +462,28 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
                 timeline.record(.workEnded)
             }
         }
+
         wasActive = active
         wasInMeeting = inMeeting
+    }
 
-        // Meeting time counts (still sitting), but stretch break time doesn't
+    // MARK: - Tick: Update Timers
+
+    /// Update work, idle, and sitting timers based on current activity.
+    private func updateTimers(active: Bool, inMeeting: Bool) {
+        // Active work time — meetings count (still sitting), breaks don't
         if active && !breakInProgress {
             activeSecondsSinceLastReminder += pollInterval
             totalActiveSeconds += pollInterval
         }
 
-        // Track continuous idle time.  When the user has been idle for at
-        // least as long as a stretch break, treat it as equivalent rest and
-        // reset the work timer so a break doesn't fire right after return.
+        // Continuous idle — when idle long enough, treat as natural rest
         if !active && !breakInProgress {
             continuousIdleSeconds += pollInterval
             if continuousIdleSeconds >= TimeInterval(stretchDurationSeconds)
                 && activeSecondsSinceLastReminder > 0 {
                 activeSecondsSinceLastReminder = 0
-                snoozesUsedThisCycle = 0
-                warningShownThisCycle = false
-                postureNudgeShownThisCycle = false
+                breakCycle.reset()
                 DispatchQueue.main.async { [weak self] in
                     self?.onDismissWarning?()
                 }
@@ -494,82 +492,89 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
             continuousIdleSeconds = 0
         }
 
-        // Track continuous sitting — counts meeting time too since the user is
-        // still seated.  Only resets when a break is completed or user goes idle.
+        // Continuous sitting — counts meeting time too (user still seated).
+        // Only resets when a break is completed or user goes idle.
         if (active || inMeeting) && !breakInProgress {
-            continuousSittingSeconds += pollInterval
-            stats.updateLongestContinuousSitting(continuousSittingSeconds)
-        } else if !active && !inMeeting && continuousSittingSeconds > 0 {
-            // User went idle outside a meeting — likely stood up
-            continuousSittingSeconds = 0
-            firmHealthWarningShown = false
-            urgentHealthWarningShown = false
-            lastUrgentWarningAt = 0
+            sitting.continuousSeconds += pollInterval
+            stats.updateLongestContinuousSitting(sitting.continuousSeconds)
+        } else if !active && !inMeeting && sitting.continuousSeconds > 0 {
+            sitting.reset()
         }
+    }
 
-        onTick?(totalActiveSeconds, activeSecondsSinceLastReminder, active, inMeeting)
+    // MARK: - Tick: Posture Nudge
 
-        let thresholdSeconds = TimeInterval(reminderIntervalMinutes) * 60
-        let timeUntilBreak = thresholdSeconds - activeSecondsSinceLastReminder
+    /// Show posture nudge at the halfway point (suppress during meetings and idle).
+    private func checkPostureNudge(active: Bool, inMeeting: Bool, timeUntilBreak: TimeInterval, thresholdSeconds: TimeInterval) {
+        guard !breakCycle.postureNudgeShown && active && !inMeeting
+              && activeSecondsSinceLastReminder >= (thresholdSeconds / 2)
+              && timeUntilBreak > warningLeadTimeSeconds else { return }
 
-        // Posture micro-nudge at the halfway point (suppress during meetings and idle)
-        if !postureNudgeShownThisCycle && active && !inMeeting && activeSecondsSinceLastReminder >= (thresholdSeconds / 2) && timeUntilBreak > warningLeadTimeSeconds {
-            postureNudgeShownThisCycle = true
-            DispatchQueue.main.async { [weak self] in
-                self?.onPostureNudge?()
+        breakCycle.postureNudgeShown = true
+        DispatchQueue.main.async { [weak self] in
+            self?.onPostureNudge?()
+        }
+    }
+
+    // MARK: - Tick: Warning Banner
+
+    /// Show warning banner before the break (suppress during meetings and idle).
+    private func checkWarningBanner(active: Bool, inMeeting: Bool, timeUntilBreak: TimeInterval) {
+        guard blockingModeEnabled && !breakCycle.warningShown && active && !inMeeting
+              && timeUntilBreak <= warningLeadTimeSeconds && timeUntilBreak > 0 else { return }
+
+        breakCycle.warningShown = true
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.onWarning?(Int(timeUntilBreak), self.breakCycle.canSnooze)
+        }
+    }
+
+    // MARK: - Tick: Health Warnings
+
+    /// Fire health warnings for prolonged continuous sitting (suppress during meetings).
+    private func checkHealthWarnings(inMeeting: Bool) {
+        guard !inMeeting && !breakInProgress else { return }
+
+        if sitting.continuousSeconds >= SittingTracker.urgentThreshold {
+            if !sitting.urgentWarningShown {
+                sitting.urgentWarningShown = true
+                sitting.lastUrgentWarningAt = sitting.continuousSeconds
+                emitHealthWarning(isUrgent: true)
+            } else if sitting.continuousSeconds - sitting.lastUrgentWarningAt >= SittingTracker.urgentRepeatInterval {
+                sitting.lastUrgentWarningAt = sitting.continuousSeconds
+                emitHealthWarning(isUrgent: true)
             }
+        } else if sitting.continuousSeconds >= SittingTracker.firmThreshold && !sitting.firmWarningShown {
+            sitting.firmWarningShown = true
+            emitHealthWarning(isUrgent: false)
+        }
+    }
+
+    /// Record a health warning in stats/timeline and notify the UI.
+    private func emitHealthWarning(isUrgent: Bool) {
+        let minutes = sitting.continuousMinutes
+        stats.recordHealthWarning()
+        timeline.record(.healthWarning, detail: "\(minutes) min\(isUrgent ? " (urgent)" : "")")
+        DispatchQueue.main.async { [weak self] in
+            self?.onHealthWarning?(minutes, isUrgent)
+        }
+    }
+
+    // MARK: - Tick: Break Threshold
+
+    /// Check if it's time to fire a break (defer during meetings).
+    private func checkBreakThreshold(active: Bool, inMeeting: Bool, thresholdSeconds: TimeInterval) {
+        guard active && activeSecondsSinceLastReminder >= thresholdSeconds else { return }
+
+        if inMeeting {
+            // Defer — don't reset the timer, fire as soon as meeting ends
+            return
         }
 
-        // Show warning banner before the break (suppress during meetings and idle)
-        if blockingModeEnabled && !warningShownThisCycle && active && !inMeeting && timeUntilBreak <= warningLeadTimeSeconds && timeUntilBreak > 0 {
-            warningShownThisCycle = true
-            DispatchQueue.main.async { [weak self] in
-                guard let self else { return }
-                self.onWarning?(Int(timeUntilBreak), self.canSnooze)
-            }
-        }
-
-        // Health warnings for prolonged continuous sitting (suppress during meetings)
-        if !inMeeting && !breakInProgress {
-            let continuousMinutes = Int(continuousSittingSeconds) / 60
-            if continuousSittingSeconds >= Self.urgentWarningThreshold {
-                if !urgentHealthWarningShown {
-                    urgentHealthWarningShown = true
-                    lastUrgentWarningAt = continuousSittingSeconds
-                    stats.recordHealthWarning()
-                    timeline.record(.healthWarning, detail: "\(continuousMinutes) min (urgent)")
-                    DispatchQueue.main.async { [weak self] in
-                        self?.onHealthWarning?(continuousMinutes, true)
-                    }
-                } else if continuousSittingSeconds - lastUrgentWarningAt >= Self.urgentRepeatInterval {
-                    lastUrgentWarningAt = continuousSittingSeconds
-                    stats.recordHealthWarning()
-                    timeline.record(.healthWarning, detail: "\(continuousMinutes) min (urgent)")
-                    DispatchQueue.main.async { [weak self] in
-                        self?.onHealthWarning?(continuousMinutes, true)
-                    }
-                }
-            } else if continuousSittingSeconds >= Self.firmWarningThreshold && !firmHealthWarningShown {
-                firmHealthWarningShown = true
-                stats.recordHealthWarning()
-                timeline.record(.healthWarning, detail: "\(continuousMinutes) min")
-                DispatchQueue.main.async { [weak self] in
-                    self?.onHealthWarning?(continuousMinutes, false)
-                }
-            }
-        }
-
-        if active && activeSecondsSinceLastReminder >= thresholdSeconds {
-            if inMeeting {
-                // Defer — don't reset the timer, fire as soon as meeting ends
-                return
-            }
-            fireReminder()
-            activeSecondsSinceLastReminder = 0
-            snoozesUsedThisCycle = 0
-            warningShownThisCycle = false
-            postureNudgeShownThisCycle = false
-        }
+        fireReminder()
+        activeSecondsSinceLastReminder = 0
+        breakCycle.reset()
     }
 
     // MARK: - Notifications
