@@ -6,7 +6,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem!
     private let reminderManager = ReminderManager()
     private var preferencesWindowController: PreferencesWindowController?
-    private var timelineWindowController: DailyTimelineWindowController?
+    private var statsWindowController: StatsViewerWindowController?
     private let stretchOverlay = StretchOverlayWindowController()
     private let warningBanner = WarningBannerController()
 
@@ -28,6 +28,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             DispatchQueue.main.async {
                 self?.updateMenuBarDisplay(totalActive: totalActive, sinceLast: sinceLast, isActive: isActive, inMeeting: inMeeting)
             }
+            // Persist work time to the daily store every tick (~5s)
+            DailyStatsStore.shared.updateTotalWorkSeconds(totalActive)
         }
 
         reminderManager.onWarning = { [weak self] secondsUntilBreak, canSnooze in
@@ -83,6 +85,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationWillTerminate(_ notification: Notification) {
         reminderManager.stop()
         AutoUpdater.shared.stopPeriodicChecks()
+        DailyStatsStore.shared.updateTotalWorkSeconds(reminderManager.totalActiveSeconds)
+        DailyStatsStore.shared.flush()
         showSessionSummaryIfNeeded()
     }
 
@@ -124,9 +128,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         streakMenuItem.isEnabled = false
         menu.addItem(streakMenuItem)
 
-        let timelineItem = NSMenuItem(title: "Today's Timeline…", action: #selector(openTimeline), keyEquivalent: "t")
-        timelineItem.target = self
-        menu.addItem(timelineItem)
+        let statsItem = NSMenuItem(title: "View Stats…", action: #selector(openStats), keyEquivalent: "s")
+        statsItem.target = self
+        menu.addItem(statsItem)
 
         menu.addItem(.separator())
 
@@ -422,15 +426,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         AutoUpdater.shared.checkForUpdates(userInitiated: true)
     }
 
-    @objc private func openTimeline() {
-        // Recreate each time so the view picks up the latest events
-        timelineWindowController = DailyTimelineWindowController(
-            store: reminderManager.timeline,
-            totalActiveSeconds: reminderManager.totalActiveSeconds
-        )
-        timelineWindowController?.showWindow()
-    }
-
     @objc private func openPreferences() {
         if preferencesWindowController == nil {
             preferencesWindowController = PreferencesWindowController { [weak self] interval, idle, blocking, stretchDuration in
@@ -441,6 +436,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
         preferencesWindowController?.showWindow()
+    }
+
+    @objc private func openStats() {
+        // Re-create each time so the timeline and live values are fresh
+        statsWindowController = StatsViewerWindowController(
+            store: reminderManager.timeline,
+            totalActiveSeconds: reminderManager.totalActiveSeconds
+        )
+        statsWindowController?.showWindow()
     }
 
     @objc private func quitApp() {
