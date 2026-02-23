@@ -1,0 +1,132 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="620" height="580" viewBox="0 0 620 580">
+  <defs>
+    <filter id="win-shadow" x="-5%" y="-3%" width="110%" height="110%">
+      <feDropShadow dx="0" dy="6" stdDeviation="16" flood-color="#000" flood-opacity="0.35"/>
+    </filter>
+    <linearGradient id="bar-blue" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#5ac8fa"/>
+      <stop offset="1" stop-color="#007aff"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Window frame -->
+  <rect x="10" y="10" width="600" height="560" rx="10" fill="#1e1e1e" filter="url(#win-shadow)"/>
+  <rect x="10" y="10" width="600" height="560" rx="10" fill="none" stroke="#3a3a3c" stroke-width="0.5"/>
+
+  <!-- Title bar -->
+  <rect x="10" y="10" width="600" height="36" rx="10" fill="#2c2c2e"/>
+  <rect x="10" y="36" width="600" height="10" fill="#2c2c2e"/>
+
+  <!-- Traffic lights -->
+  <circle cx="30" cy="28" r="6" fill="#ff5f57"/>
+  <circle cx="50" cy="28" r="6" fill="#febc2e"/>
+  <circle cx="70" cy="28" r="6" fill="#28c840"/>
+
+  <!-- Window title -->
+  <text x="310" y="33" text-anchor="middle" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="13" font-weight="500" fill="#999">DeskBreak Stats</text>
+
+  <!-- Tab picker (segmented control) -->
+  <rect x="170" y="58" width="280" height="28" rx="6" fill="#3a3a3c"/>
+  <!-- Today tab (selected) -->
+  <rect x="172" y="60" width="90" height="24" rx="5" fill="#636366"/>
+  <text x="217" y="76" text-anchor="middle" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="12" font-weight="600" fill="#fff">Today</text>
+  <!-- Daily tab -->
+  <text x="310" y="76" text-anchor="middle" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="12" fill="#999">Daily</text>
+  <!-- Weekly tab -->
+  <text x="400" y="76" text-anchor="middle" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="12" fill="#999">Weekly</text>
+
+  <!-- Divider -->
+  <line x1="10" y1="96" x2="610" y2="96" stroke="#3a3a3c" stroke-width="0.5"/>
+
+  <!-- Header -->
+  <text x="35" y="122" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="15" font-weight="600" fill="#fff">Today — Feb 23</text>
+  <text x="35" y="140" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="12" fill="#8e8e93">12 events recorded</text>
+
+  <!-- Stats grid - Row 1 -->
+  <!-- Work Time card -->
+  <rect x="35" y="158" width="170" height="80" rx="8" fill="#2c2c2e"/>
+  <text x="120" y="186" text-anchor="middle" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="20" fill="#5ac8fa">&#x1F4CB;</text>
+  <text x="120" y="212" text-anchor="middle" font-family="-apple-system, SF Pro Rounded, Helvetica Neue, sans-serif" font-size="20" font-weight="700" fill="#fff">4h 32m</text>
+  <text x="120" y="228" text-anchor="middle" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="11" fill="#8e8e93">Work Time</text>
+
+  <!-- Breaks Taken card -->
+  <rect x="215" y="158" width="170" height="80" rx="8" fill="#2c2c2e"/>
+  <text x="300" y="186" text-anchor="middle" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="20" fill="#30d158">&#x1F9CD;</text>
+  <text x="300" y="212" text-anchor="middle" font-family="-apple-system, SF Pro Rounded, Helvetica Neue, sans-serif" font-size="20" font-weight="700" fill="#fff">8</text>
+  <text x="300" y="228" text-anchor="middle" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="11" fill="#8e8e93">Breaks Taken</text>
+
+  <!-- Breaks Skipped card -->
+  <rect x="395" y="158" width="170" height="80" rx="8" fill="#2c2c2e"/>
+  <text x="480" y="186" text-anchor="middle" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="20" fill="#ff9f0a">&#x23E9;</text>
+  <text x="480" y="212" text-anchor="middle" font-family="-apple-system, SF Pro Rounded, Helvetica Neue, sans-serif" font-size="20" font-weight="700" fill="#fff">1</text>
+  <text x="480" y="228" text-anchor="middle" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="11" fill="#8e8e93">Breaks Skipped</text>
+
+  <!-- Stats grid - Row 2 -->
+  <!-- Breaks Snoozed -->
+  <rect x="35" y="248" width="170" height="80" rx="8" fill="#2c2c2e"/>
+  <text x="120" y="276" text-anchor="middle" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="20" fill="#ffd60a">&#x23F0;</text>
+  <text x="120" y="302" text-anchor="middle" font-family="-apple-system, SF Pro Rounded, Helvetica Neue, sans-serif" font-size="20" font-weight="700" fill="#fff">3</text>
+  <text x="120" y="318" text-anchor="middle" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="11" fill="#8e8e93">Breaks Snoozed</text>
+
+  <!-- Longest Sitting -->
+  <rect x="215" y="248" width="170" height="80" rx="8" fill="#2c2c2e"/>
+  <text x="300" y="276" text-anchor="middle" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="20" fill="#ff453a">&#x1FA91;</text>
+  <text x="300" y="302" text-anchor="middle" font-family="-apple-system, SF Pro Rounded, Helvetica Neue, sans-serif" font-size="20" font-weight="700" fill="#fff">38m</text>
+  <text x="300" y="318" text-anchor="middle" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="11" fill="#8e8e93">Longest Sitting</text>
+
+  <!-- Health Warnings -->
+  <rect x="395" y="248" width="170" height="80" rx="8" fill="#2c2c2e"/>
+  <text x="480" y="276" text-anchor="middle" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="20" fill="#8e8e93">&#x26A0;</text>
+  <text x="480" y="302" text-anchor="middle" font-family="-apple-system, SF Pro Rounded, Helvetica Neue, sans-serif" font-size="20" font-weight="700" fill="#fff">0</text>
+  <text x="480" y="318" text-anchor="middle" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="11" fill="#8e8e93">Health Warnings</text>
+
+  <!-- Timeline section -->
+  <text x="35" y="360" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="13" font-weight="600" fill="#fff">Timeline</text>
+
+  <!-- Timeline bar -->
+  <rect x="35" y="372" width="550" height="16" rx="4" fill="#3a3a3c"/>
+  <!-- Working segments -->
+  <rect x="35" y="372" width="80" height="16" rx="4" fill="#007aff"/>
+  <rect x="130" y="372" width="110" height="16" fill="#007aff"/>
+  <rect x="265" y="372" width="90" height="16" fill="#007aff"/>
+  <rect x="380" y="372" width="120" height="16" fill="#007aff"/>
+  <rect x="520" y="372" width="65" height="16" rx="0" fill="#007aff"/>
+  <!-- Break segments -->
+  <rect x="115" y="372" width="15" height="16" fill="#30d158"/>
+  <rect x="240" y="372" width="25" height="16" fill="#30d158"/>
+  <rect x="355" y="372" width="25" height="16" fill="#30d158"/>
+  <rect x="500" y="372" width="20" height="16" fill="#30d158"/>
+
+  <!-- Timeline labels -->
+  <text x="35" y="404" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="10" fill="#8e8e93">9:00 AM</text>
+  <text x="300" y="404" text-anchor="middle" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="10" fill="#8e8e93">12:00 PM</text>
+  <text x="560" y="404" text-anchor="end" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="10" fill="#8e8e93">3:15 PM</text>
+
+  <!-- Timeline legend -->
+  <rect x="35" y="415" width="10" height="10" rx="2" fill="#007aff"/>
+  <text x="50" y="424" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="10" fill="#8e8e93">Working</text>
+  <rect x="105" y="415" width="10" height="10" rx="2" fill="#30d158"/>
+  <text x="120" y="424" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="10" fill="#8e8e93">Break</text>
+  <rect x="165" y="415" width="10" height="10" rx="2" fill="#3a3a3c"/>
+  <text x="180" y="424" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="10" fill="#8e8e93">Idle</text>
+
+  <!-- Event log -->
+  <text x="35" y="450" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="13" font-weight="600" fill="#fff">Recent Events</text>
+
+  <!-- Event entries -->
+  <text x="35" y="472" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="12" fill="#30d158">&#x2714;</text>
+  <text x="55" y="472" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="12" fill="#ccc">Break completed</text>
+  <text x="550" y="472" text-anchor="end" font-family="-apple-system, SF Mono, Menlo, monospace" font-size="11" fill="#8e8e93">3:10 PM</text>
+
+  <text x="35" y="494" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="12" fill="#007aff">&#x25B6;</text>
+  <text x="55" y="494" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="12" fill="#ccc">Work started</text>
+  <text x="550" y="494" text-anchor="end" font-family="-apple-system, SF Mono, Menlo, monospace" font-size="11" fill="#8e8e93">3:09 PM</text>
+
+  <text x="35" y="516" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="12" fill="#30d158">&#x2714;</text>
+  <text x="55" y="516" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="12" fill="#ccc">Break completed</text>
+  <text x="550" y="516" text-anchor="end" font-family="-apple-system, SF Mono, Menlo, monospace" font-size="11" fill="#8e8e93">2:35 PM</text>
+
+  <text x="35" y="538" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="12" fill="#ff9f0a">&#x1F4A4;</text>
+  <text x="55" y="538" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="12" fill="#ccc">Break snoozed (5m)</text>
+  <text x="550" y="538" text-anchor="end" font-family="-apple-system, SF Mono, Menlo, monospace" font-size="11" fill="#8e8e93">2:30 PM</text>
+</svg>

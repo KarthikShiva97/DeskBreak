@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="160" viewBox="0 0 560 160">
+  <defs>
+    <filter id="banner-shadow" x="-10%" y="-20%" width="120%" height="150%">
+      <feDropShadow dx="0" dy="8" stdDeviation="20" flood-color="#000" flood-opacity="0.25"/>
+    </filter>
+    <linearGradient id="banner-bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3a3a3e"/>
+      <stop offset="1" stop-color="#2c2c30"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Simulated desktop background hint -->
+  <rect width="560" height="160" fill="#1a1a2e"/>
+
+  <!-- Banner floating panel -->
+  <rect x="40" y="40" width="480" height="70" rx="14" fill="url(#banner-bg)" filter="url(#banner-shadow)"/>
+  <rect x="40" y="40" width="480" height="70" rx="14" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="0.5"/>
+
+  <!-- Standing figure icon (orange, bouncing) -->
+  <g transform="translate(68, 56)" fill="#ff9f0a">
+    <circle cx="8" cy="3" r="3"/>
+    <line x1="8" y1="6" x2="8" y2="20" stroke="#ff9f0a" stroke-width="2" stroke-linecap="round"/>
+    <line x1="8" y1="10" x2="3" y2="15" stroke="#ff9f0a" stroke-width="1.8" stroke-linecap="round"/>
+    <line x1="8" y1="10" x2="13" y2="15" stroke="#ff9f0a" stroke-width="1.8" stroke-linecap="round"/>
+    <line x1="8" y1="20" x2="4" y2="28" stroke="#ff9f0a" stroke-width="1.8" stroke-linecap="round"/>
+    <line x1="8" y1="20" x2="12" y2="28" stroke="#ff9f0a" stroke-width="1.8" stroke-linecap="round"/>
+  </g>
+
+  <!-- Main text -->
+  <text x="100" y="68" font-family="-apple-system, SF Pro Rounded, Helvetica Neue, sans-serif" font-size="15" font-weight="600" fill="#fff">Stretch break in 24s</text>
+  <text x="100" y="88" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="12" fill="#8e8e93">Wrap up — stretch break coming up</text>
+
+  <!-- Snooze button -->
+  <rect x="382" y="55" width="120" height="30" rx="6" fill="#48484a" stroke="#636366" stroke-width="0.5"/>
+  <text x="400" y="74" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="12" font-weight="500" fill="#fff">&#x23F0; Snooze 5m</text>
+</svg>

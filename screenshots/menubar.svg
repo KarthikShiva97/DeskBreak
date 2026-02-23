@@ -1,0 +1,109 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="380" height="520" viewBox="0 0 380 520">
+  <defs>
+    <filter id="shadow" x="-10%" y="-5%" width="120%" height="115%">
+      <feDropShadow dx="0" dy="4" stdDeviation="12" flood-color="#000" flood-opacity="0.3"/>
+    </filter>
+    <linearGradient id="menubar-bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3a3a3c"/>
+      <stop offset="1" stop-color="#2c2c2e"/>
+    </linearGradient>
+    <linearGradient id="menu-bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#323234"/>
+      <stop offset="1" stop-color="#2a2a2c"/>
+    </linearGradient>
+  </defs>
+
+  <!-- macOS menu bar -->
+  <rect x="0" y="0" width="380" height="28" rx="0" fill="#1e1e1e"/>
+
+  <!-- Menu bar items (left side) -->
+  <text x="14" y="18" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="13" font-weight="600" fill="#fff">&#xF8FF;</text>
+  <text x="36" y="18" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="13" font-weight="600" fill="#fff">Finder</text>
+  <text x="80" y="18" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="13" fill="#fff">File</text>
+  <text x="106" y="18" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="13" fill="#fff">Edit</text>
+  <text x="135" y="18" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="13" fill="#fff">View</text>
+
+  <!-- Status bar items (right side) -->
+  <text x="350" y="18" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="12" fill="#fff">9:41</text>
+
+  <!-- DeskBreak status item (highlighted) -->
+  <rect x="224" y="2" width="80" height="24" rx="4" fill="#4a4a4c"/>
+
+  <!-- Standing figure icon -->
+  <g transform="translate(232, 6)" fill="#fff">
+    <circle cx="6" cy="2" r="2"/>
+    <line x1="6" y1="4" x2="6" y2="11" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="6" y1="6" x2="3" y2="9" stroke="#fff" stroke-width="1.3" stroke-linecap="round"/>
+    <line x1="6" y1="6" x2="9" y2="9" stroke="#fff" stroke-width="1.3" stroke-linecap="round"/>
+    <line x1="6" y1="11" x2="3.5" y2="16" stroke="#fff" stroke-width="1.3" stroke-linecap="round"/>
+    <line x1="6" y1="11" x2="8.5" y2="16" stroke="#fff" stroke-width="1.3" stroke-linecap="round"/>
+  </g>
+  <text x="248" y="18" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="12" fill="#fff">2h 15m</text>
+
+  <!-- Dropdown menu -->
+  <rect x="170" y="34" width="200" height="430" rx="10" fill="#2c2c2e" filter="url(#shadow)"/>
+  <rect x="170" y="34" width="200" height="430" rx="10" fill="none" stroke="#444" stroke-width="0.5"/>
+
+  <!-- Working time -->
+  <text x="186" y="62" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="13" fill="#8e8e93">Working: 2h 15m</text>
+
+  <!-- Next break -->
+  <text x="186" y="82" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="13" fill="#8e8e93">Next break: 8m 32s</text>
+
+  <!-- Separator -->
+  <line x1="186" y1="96" x2="354" y2="96" stroke="#48484a" stroke-width="0.5"/>
+
+  <!-- Breaks today -->
+  <text x="186" y="116" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="13" fill="#8e8e93">Breaks today: 5 completed, 1 skipped</text>
+
+  <!-- Streak -->
+  <text x="186" y="138" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="13" fill="#8e8e93">Streak: 7 days</text>
+
+  <!-- View Stats -->
+  <rect x="178" y="150" width="184" height="24" rx="4" fill="transparent"/>
+  <text x="186" y="168" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="13" fill="#fff">View Stats…</text>
+  <text x="338" y="168" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="11" fill="#8e8e93">&#x2318;S</text>
+
+  <!-- Separator -->
+  <line x1="186" y1="182" x2="354" y2="182" stroke="#48484a" stroke-width="0.5"/>
+
+  <!-- Break Now -->
+  <rect x="178" y="190" width="184" height="24" rx="4" fill="transparent"/>
+  <text x="186" y="208" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="13" fill="#fff">Break Now</text>
+  <text x="336" y="208" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="11" fill="#8e8e93">&#x2318;B</text>
+
+  <!-- Disable for... -->
+  <rect x="178" y="218" width="184" height="24" rx="4" fill="transparent"/>
+  <text x="186" y="236" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="13" fill="#fff">Disable for…</text>
+  <text x="352" y="236" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="11" fill="#8e8e93">&#x25B8;</text>
+
+  <!-- Reset Session -->
+  <rect x="178" y="246" width="184" height="24" rx="4" fill="transparent"/>
+  <text x="186" y="264" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="13" fill="#fff">Reset Session</text>
+  <text x="335" y="264" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="11" fill="#8e8e93">&#x2318;R</text>
+
+  <!-- Separator -->
+  <line x1="186" y1="278" x2="354" y2="278" stroke="#48484a" stroke-width="0.5"/>
+
+  <!-- Check for Updates -->
+  <rect x="178" y="286" width="184" height="24" rx="4" fill="transparent"/>
+  <text x="186" y="304" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="13" fill="#fff">Check for Updates…</text>
+  <text x="335" y="304" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="11" fill="#8e8e93">&#x2318;U</text>
+
+  <!-- Preferences -->
+  <rect x="178" y="314" width="184" height="24" rx="4" fill="transparent"/>
+  <text x="186" y="332" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="13" fill="#fff">Preferences…</text>
+  <text x="338" y="332" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="11" fill="#8e8e93">&#x2318;,</text>
+
+  <!-- Separator -->
+  <line x1="186" y1="346" x2="354" y2="346" stroke="#48484a" stroke-width="0.5"/>
+
+  <!-- Quit -->
+  <rect x="178" y="354" width="184" height="24" rx="4" fill="transparent"/>
+  <text x="186" y="372" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="13" fill="#fff">Quit StandupReminder</text>
+  <text x="335" y="372" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="11" fill="#8e8e93">&#x2318;Q</text>
+
+  <!-- Label -->
+  <text x="190" y="510" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="11" fill="#666" text-anchor="middle" transform="translate(0,0)">
+  </text>
+</svg>

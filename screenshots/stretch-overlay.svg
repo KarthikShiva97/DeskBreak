@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="560" viewBox="0 0 800 560">
+  <defs>
+    <linearGradient id="overlay-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0d0d26"/>
+      <stop offset="1" stop-color="#1a0d33"/>
+    </linearGradient>
+    <linearGradient id="progress-grad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#00d4ff"/>
+      <stop offset="1" stop-color="#3366ff"/>
+    </linearGradient>
+    <linearGradient id="card-bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="rgba(255,255,255,0.08)"/>
+      <stop offset="1" stop-color="rgba(255,255,255,0.03)"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="text-glow">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="800" height="560" fill="url(#overlay-bg)"/>
+
+  <!-- Subtle star-like dots -->
+  <circle cx="120" cy="80" r="1" fill="#fff" opacity="0.15"/>
+  <circle cx="680" cy="120" r="1" fill="#fff" opacity="0.1"/>
+  <circle cx="300" cy="50" r="0.8" fill="#fff" opacity="0.12"/>
+  <circle cx="550" cy="90" r="1.2" fill="#fff" opacity="0.08"/>
+  <circle cx="700" cy="400" r="0.8" fill="#fff" opacity="0.1"/>
+  <circle cx="100" cy="450" r="1" fill="#fff" opacity="0.12"/>
+
+  <!-- Title -->
+  <text x="400" y="80" text-anchor="middle" font-family="-apple-system, SF Pro Rounded, Helvetica Neue, sans-serif" font-size="48" font-weight="700" fill="#fff" filter="url(#text-glow)">Time to Stretch!</text>
+
+  <!-- Exercise card -->
+  <rect x="180" y="120" width="440" height="210" rx="20" fill="url(#card-bg)" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
+
+  <!-- Exercise icon (standing figure) -->
+  <g transform="translate(370, 150)" fill="#00d4ff" filter="url(#glow)">
+    <circle cx="30" cy="8" r="8"/>
+    <line x1="30" y1="16" x2="30" y2="46" stroke="#00d4ff" stroke-width="4" stroke-linecap="round"/>
+    <line x1="30" y1="24" x2="16" y2="36" stroke="#00d4ff" stroke-width="3.5" stroke-linecap="round"/>
+    <line x1="30" y1="24" x2="44" y2="36" stroke="#00d4ff" stroke-width="3.5" stroke-linecap="round"/>
+    <line x1="30" y1="46" x2="20" y2="64" stroke="#00d4ff" stroke-width="3.5" stroke-linecap="round"/>
+    <line x1="30" y1="46" x2="40" y2="64" stroke="#00d4ff" stroke-width="3.5" stroke-linecap="round"/>
+  </g>
+
+  <!-- Exercise name -->
+  <text x="400" y="240" text-anchor="middle" font-family="-apple-system, SF Pro Rounded, Helvetica Neue, sans-serif" font-size="28" font-weight="600" fill="#fff">Standing Back Extension</text>
+
+  <!-- Exercise instruction -->
+  <text x="400" y="270" text-anchor="middle" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="16" fill="rgba(255,255,255,0.7)">
+    <tspan x="400" dy="0">Stand up. Place hands on lower back, gently lean</tspan>
+    <tspan x="400" dy="22">backwards. Hold 5 seconds. Repeat 5 times.</tspan>
+    <tspan x="400" dy="22">This is the single most important move for disc bulges.</tspan>
+  </text>
+
+  <!-- Countdown timer -->
+  <text x="400" y="390" text-anchor="middle" font-family="-apple-system, SF Mono, Menlo, monospace" font-size="72" font-weight="700" fill="#fff">0:42</text>
+
+  <!-- Progress ring -->
+  <g transform="translate(400, 470)">
+    <circle cx="0" cy="0" r="36" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="6"/>
+    <circle cx="0" cy="0" r="36" fill="none" stroke="url(#progress-grad)" stroke-width="6" stroke-linecap="round"
+      stroke-dasharray="226" stroke-dashoffset="68" transform="rotate(-90)"/>
+  </g>
+
+  <!-- Done button -->
+  <rect x="325" y="522" width="150" height="36" rx="18" fill="rgba(255,255,255,0.12)"/>
+  <text x="400" y="545" text-anchor="middle" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="15" font-weight="500" fill="#fff">Done Stretching</text>
+</svg>

@@ -1,0 +1,100 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="460" height="540" viewBox="0 0 460 540">
+  <defs>
+    <filter id="pref-shadow" x="-5%" y="-3%" width="110%" height="110%">
+      <feDropShadow dx="0" dy="6" stdDeviation="16" flood-color="#000" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+
+  <!-- Window frame -->
+  <rect x="10" y="10" width="440" height="520" rx="10" fill="#1e1e1e" filter="url(#pref-shadow)"/>
+  <rect x="10" y="10" width="440" height="520" rx="10" fill="none" stroke="#3a3a3c" stroke-width="0.5"/>
+
+  <!-- Title bar -->
+  <rect x="10" y="10" width="440" height="36" rx="10" fill="#2c2c2e"/>
+  <rect x="10" y="36" width="440" height="10" fill="#2c2c2e"/>
+
+  <!-- Traffic lights -->
+  <circle cx="30" cy="28" r="6" fill="#ff5f57"/>
+  <circle cx="50" cy="28" r="6" fill="#febc2e"/>
+  <circle cx="70" cy="28" r="6" fill="#28c840"/>
+
+  <!-- Window title -->
+  <text x="230" y="33" text-anchor="middle" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="13" font-weight="500" fill="#999">StandupReminder Preferences</text>
+
+  <!-- SECTION: Reminder Settings -->
+  <text x="42" y="70" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="11" font-weight="600" fill="#8e8e93" letter-spacing="0.5">&#x23F1;  REMINDER SETTINGS</text>
+
+  <!-- Grouped form background -->
+  <rect x="28" y="82" width="404" height="110" rx="8" fill="#2c2c2e"/>
+
+  <!-- Remind me every -->
+  <text x="44" y="106" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="13" fill="#fff">Remind me every:</text>
+  <!-- Dropdown -->
+  <rect x="310" y="92" width="110" height="24" rx="5" fill="#3a3a3c"/>
+  <text x="330" y="108" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="13" fill="#fff">25 minutes</text>
+  <text x="406" y="108" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="10" fill="#8e8e93">&#x25BC;</text>
+
+  <!-- Divider inside group -->
+  <line x1="44" y1="122" x2="416" y2="122" stroke="#3a3a3c" stroke-width="0.5"/>
+
+  <!-- Consider me idle -->
+  <text x="44" y="146" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="13" fill="#fff">Consider me idle after:</text>
+  <rect x="310" y="132" width="110" height="24" rx="5" fill="#3a3a3c"/>
+  <text x="330" y="148" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="13" fill="#fff">2 minutes</text>
+  <text x="406" y="148" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="10" fill="#8e8e93">&#x25BC;</text>
+
+  <!-- Caption text -->
+  <text x="44" y="178" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="11" fill="#8e8e93">25 minutes is recommended for spinal disc issues.</text>
+
+  <!-- SECTION: Break Enforcement -->
+  <text x="42" y="210" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="11" font-weight="600" fill="#8e8e93" letter-spacing="0.5">&#x270B;  BREAK ENFORCEMENT</text>
+
+  <rect x="28" y="222" width="404" height="110" rx="8" fill="#2c2c2e"/>
+
+  <!-- Block screen toggle -->
+  <text x="44" y="246" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="13" fill="#fff">Block screen until stretching is done</text>
+  <!-- Toggle ON -->
+  <rect x="386" y="234" width="36" height="20" rx="10" fill="#30d158"/>
+  <circle cx="410" cy="244" r="8" fill="#fff"/>
+
+  <!-- Divider -->
+  <line x1="44" y1="262" x2="416" y2="262" stroke="#3a3a3c" stroke-width="0.5"/>
+
+  <!-- Stretch break duration -->
+  <text x="44" y="284" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="13" fill="#fff">Stretch break duration:</text>
+  <rect x="310" y="272" width="110" height="24" rx="5" fill="#3a3a3c"/>
+  <text x="330" y="288" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="13" fill="#fff">1 minute</text>
+  <text x="406" y="288" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="10" fill="#8e8e93">&#x25BC;</text>
+
+  <!-- Caption -->
+  <text x="44" y="316" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="11" fill="#8e8e93">
+    <tspan x="44" dy="0">Full-screen overlay blocks your work until the timer</tspan>
+    <tspan x="44" dy="14">finishes. You can skip after 10 seconds.</tspan>
+  </text>
+
+  <!-- SECTION: General -->
+  <text x="42" y="358" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="11" font-weight="600" fill="#8e8e93" letter-spacing="0.5">&#x2699;  GENERAL</text>
+
+  <rect x="28" y="370" width="404" height="68" rx="8" fill="#2c2c2e"/>
+
+  <!-- Launch at login -->
+  <text x="44" y="394" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="13" fill="#fff">Launch at login</text>
+  <rect x="386" y="382" width="36" height="20" rx="10" fill="#3a3a3c"/>
+  <circle cx="396" cy="392" r="8" fill="#fff"/>
+
+  <!-- Divider -->
+  <line x1="44" y1="408" x2="416" y2="408" stroke="#3a3a3c" stroke-width="0.5"/>
+
+  <!-- Auto update -->
+  <text x="44" y="430" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="13" fill="#fff">Automatically check for updates</text>
+  <rect x="386" y="418" width="36" height="20" rx="10" fill="#30d158"/>
+  <circle cx="410" cy="428" r="8" fill="#fff"/>
+
+  <!-- SECTION: How it works -->
+  <text x="42" y="464" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="11" font-weight="600" fill="#8e8e93" letter-spacing="0.5">&#x2753;  HOW IT WORKS</text>
+
+  <rect x="28" y="476" width="404" height="44" rx="8" fill="#2c2c2e"/>
+
+  <text x="44" y="492" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="11" fill="#8e8e93">Snooze: 2 per break (5min, then 2min)</text>
+  <text x="44" y="506" font-family="-apple-system, SF Pro Text, Helvetica Neue, sans-serif" font-size="11" fill="#8e8e93">Posture nudge: silent reminder at halfway</text>
+</svg>
