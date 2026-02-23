@@ -1,3 +1,4 @@
+import CoreAudio
 import Foundation
 import IOKit
 
@@ -53,5 +54,43 @@ final class ActivityMonitor {
     /// Returns `true` if the user is currently active (idle time below threshold).
     func isUserActive() -> Bool {
         return systemIdleTime() < idleThresholdSeconds
+    }
+
+    /// Returns `true` if the default audio input device is currently active,
+    /// which strongly suggests the user is on a call or in a meeting.
+    func isMicrophoneInUse() -> Bool {
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyDefaultInputDevice,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+
+        var deviceID: AudioDeviceID = 0
+        var size = UInt32(MemoryLayout<AudioDeviceID>.size)
+
+        guard AudioObjectGetPropertyData(
+            AudioObjectID(kAudioObjectSystemObject),
+            &address,
+            0,
+            nil,
+            &size,
+            &deviceID
+        ) == noErr, deviceID != 0 else { return false }
+
+        // Check if any process is using the input device
+        var isRunning: UInt32 = 0
+        size = UInt32(MemoryLayout<UInt32>.size)
+        address.mSelector = kAudioDevicePropertyDeviceIsRunningSomewhere
+
+        guard AudioObjectGetPropertyData(
+            deviceID,
+            &address,
+            0,
+            nil,
+            &size,
+            &isRunning
+        ) == noErr else { return false }
+
+        return isRunning != 0
     }
 }

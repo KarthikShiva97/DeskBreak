@@ -34,9 +34,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self.warningBanner.show(
                 secondsUntilBreak: secondsUntilBreak,
                 canSnooze: canSnooze,
-                snoozeLabel: self.reminderManager.nextSnoozeLabel
-            ) { [weak self] in
-                self?.reminderManager.snooze()
+                snoozeOptions: ReminderManager.snoozeOptions,
+                snoozesRemaining: self.reminderManager.snoozesRemaining
+            ) { [weak self] minutes in
+                self?.reminderManager.snooze(minutes: minutes)
             }
         }
 

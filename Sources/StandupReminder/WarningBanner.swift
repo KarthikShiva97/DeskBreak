@@ -7,18 +7,20 @@ import SwiftUI
 struct WarningBannerView: View {
     let secondsUntilBreak: Int
     let canSnooze: Bool
-    let snoozeLabel: String
-    let onSnooze: () -> Void
+    let snoozeOptions: [Int]
+    let snoozesRemaining: Int
+    let onSnooze: (Int) -> Void
 
     @State private var countdown: Int
     @State private var opacity: Double = 0
 
     private let timerPublisher = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
-    init(secondsUntilBreak: Int, canSnooze: Bool, snoozeLabel: String, onSnooze: @escaping () -> Void) {
+    init(secondsUntilBreak: Int, canSnooze: Bool, snoozeOptions: [Int], snoozesRemaining: Int, onSnooze: @escaping (Int) -> Void) {
         self.secondsUntilBreak = secondsUntilBreak
         self.canSnooze = canSnooze
-        self.snoozeLabel = snoozeLabel
+        self.snoozeOptions = snoozeOptions
+        self.snoozesRemaining = snoozesRemaining
         self.onSnooze = onSnooze
         self._countdown = State(initialValue: secondsUntilBreak)
     }
@@ -36,20 +38,30 @@ struct WarningBannerView: View {
                     .foregroundStyle(.primary)
                     .contentTransition(.numericText())
 
-                Text("Wrap up — stretch break coming up")
-                    .font(.system(size: 12))
-                    .foregroundStyle(.secondary)
+                if canSnooze {
+                    Text("\(snoozesRemaining) snooze\(snoozesRemaining == 1 ? "" : "s") left")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                } else {
+                    Text("Wrap up — stretch break coming up")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                }
             }
 
             Spacer()
 
             if canSnooze {
-                Button(action: onSnooze) {
-                    Label("Snooze \(snoozeLabel)", systemImage: "clock.badge.questionmark")
-                        .font(.system(size: 12, weight: .medium))
+                HStack(spacing: 6) {
+                    ForEach(snoozeOptions, id: \.self) { minutes in
+                        Button { onSnooze(minutes) } label: {
+                            Text("\(minutes)m")
+                                .font(.system(size: 12, weight: .medium))
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                    }
                 }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
             }
         }
         .padding(.horizontal, 20)
@@ -80,16 +92,17 @@ struct WarningBannerView: View {
 final class WarningBannerController {
     private var window: NSWindow?
 
-    func show(secondsUntilBreak: Int, canSnooze: Bool, snoozeLabel: String = "5m", onSnooze: @escaping () -> Void) {
+    func show(secondsUntilBreak: Int, canSnooze: Bool, snoozeOptions: [Int], snoozesRemaining: Int, onSnooze: @escaping (Int) -> Void) {
         dismiss()
 
         let bannerView = WarningBannerView(
             secondsUntilBreak: secondsUntilBreak,
             canSnooze: canSnooze,
-            snoozeLabel: snoozeLabel,
-            onSnooze: { [weak self] in
+            snoozeOptions: snoozeOptions,
+            snoozesRemaining: snoozesRemaining,
+            onSnooze: { [weak self] minutes in
                 self?.dismiss()
-                onSnooze()
+                onSnooze(minutes)
             }
         )
 

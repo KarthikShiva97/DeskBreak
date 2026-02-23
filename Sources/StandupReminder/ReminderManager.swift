@@ -43,10 +43,12 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
     /// Seconds of warning before the full block. Defaults to 30.
     let warningLeadTimeSeconds: TimeInterval = 30
 
-    /// Number of snoozes used this cycle. Max 2: first = 5min, second = 2min.
+    /// Number of snoozes used this cycle. Max 2 per cycle.
     private var snoozesUsedThisCycle: Int = 0
     private static let maxSnoozesPerCycle = 2
-    private static let snoozeDurations: [TimeInterval] = [5 * 60, 2 * 60]
+
+    /// Available snooze durations (in minutes) shown to the user.
+    static let snoozeOptions: [Int] = [5, 15, 30]
 
     /// Whether the warning has been shown for the current cycle.
     private var warningShownThisCycle = false
@@ -217,10 +219,10 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
         }
     }
 
-    /// Snooze the current break. First snooze = 5min, second = 2min.
-    func snooze() {
+    /// Snooze the current break by the given number of minutes.
+    func snooze(minutes: Int) {
         guard snoozesUsedThisCycle < Self.maxSnoozesPerCycle else { return }
-        let snoozeAmount = Self.snoozeDurations[snoozesUsedThisCycle]
+        let snoozeAmount = TimeInterval(minutes * 60)
         snoozesUsedThisCycle += 1
         warningShownThisCycle = false
         stats.recordBreakSnoozed()
@@ -235,11 +237,9 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
         snoozesUsedThisCycle < Self.maxSnoozesPerCycle
     }
 
-    /// Human-readable description of the next snooze duration.
-    var nextSnoozeLabel: String {
-        guard canSnooze else { return "" }
-        let seconds = Self.snoozeDurations[snoozesUsedThisCycle]
-        return "\(Int(seconds / 60))m"
+    /// How many snoozes remain this cycle.
+    var snoozesRemaining: Int {
+        max(0, Self.maxSnoozesPerCycle - snoozesUsedThisCycle)
     }
 
     /// Adaptive break duration: increases by 15s per cycle, capped at 120s or
@@ -251,30 +251,48 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
 
     // MARK: - Meeting Detection
 
-    /// Returns true if a known video call or screen-sharing app is running.
-    /// Used to pause the work timer during meetings and defer overlay breaks.
+    /// Returns true if the user appears to be in a meeting or on a call.
+    /// Checks running apps, microphone usage, and macOS Focus mode.
     private func isInMeeting() -> Bool {
+        // 1. Check if microphone is active — catches all calls including
+        //    browser-based meetings (Google Meet), phone calls via Continuity, etc.
+        if activityMonitor.isMicrophoneInUse() {
+            return true
+        }
+
+        // 2. Check for known meeting/screen-sharing apps by bundle ID prefix
         let meetingBundleIDs = [
-            "us.zoom.xos",               // Zoom
-            "com.cisco.webexmeetingsapp", // Webex
-            "com.microsoft.teams",        // Teams
-            "com.apple.FaceTime",         // FaceTime
-        ]
-        let meetingNameFragments = [
-            "Screen Sharing",             // Slack screen sharing helper
-            "ScreenFlow",
-            "OBS",
+            "us.zoom.xos",                   // Zoom
+            "com.cisco.webexmeetingsapp",     // Webex
+            "com.microsoft.teams",            // Teams (classic & new)
+            "com.apple.FaceTime",             // FaceTime
+            "com.slack",                      // Slack (huddles)
+            "com.tinyspeck.slackmacgap",      // Slack (older builds)
+            "com.logmein.GoToMeeting",        // GoTo Meeting
+            "com.google.Chrome.app.kjgfgldnnfobanaplnfnlmidlhiehcmk", // Google Meet PWA
+            "com.brave.Browser.app",          // Brave Meet PWA
+            "com.discord",                    // Discord
+            "com.bluejeans.Blue",             // BlueJeans
+            "com.amazon.Amazon-Chime",        // Amazon Chime
+            "com.ringcentral.RingCentral",    // RingCentral
         ]
 
-        for app in NSWorkspace.shared.runningApplications {
+        // 3. Check for meeting-related process names
+        let meetingNameFragments = [
+            "Screen Sharing",                 // Slack / macOS screen sharing helper
+            "ScreenFlow",
+            "OBS",
+            "Google Meet",
+            "Huddle",
+        ]
+
+        for app in NSWorkspace.shared.runningApplications where !app.isTerminated {
             if let bundleID = app.bundleIdentifier,
-               meetingBundleIDs.contains(where: { bundleID.hasPrefix($0) }),
-               !app.isTerminated {
+               meetingBundleIDs.contains(where: { bundleID.hasPrefix($0) }) {
                 return true
             }
             if let name = app.localizedName,
-               meetingNameFragments.contains(where: { name.contains($0) }),
-               !app.isTerminated {
+               meetingNameFragments.contains(where: { name.contains($0) }) {
                 return true
             }
         }
