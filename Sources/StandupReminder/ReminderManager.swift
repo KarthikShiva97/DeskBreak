@@ -81,6 +81,13 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
     /// Previous tick's meeting state — used to detect meeting start/end transitions.
     private var wasInMeeting = false
 
+    // MARK: - Continuous Idle Tracker
+
+    /// Continuous seconds the user has been detected as idle (no input).
+    /// When this exceeds the stretch duration the idle period counts as
+    /// an equivalent rest and the work timer resets automatically.
+    private var continuousIdleSeconds: TimeInterval = 0
+
     // MARK: - Continuous Sitting Tracker
 
     /// Continuous seconds the user has been sitting without completing a break.
@@ -213,6 +220,7 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
         resumeTimer = nil
         disabledUntil = nil
         activeSecondsSinceLastReminder = 0
+        continuousIdleSeconds = 0
         continuousSittingSeconds = 0
         snoozesUsedThisCycle = 0
         warningShownThisCycle = false
@@ -233,6 +241,7 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
     func resetSession() {
         activeSecondsSinceLastReminder = 0
         totalActiveSeconds = 0
+        continuousIdleSeconds = 0
         continuousSittingSeconds = 0
         snoozesUsedThisCycle = 0
         warningShownThisCycle = false
@@ -438,6 +447,25 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
             totalActiveSeconds += pollInterval
         }
 
+        // Track continuous idle time.  When the user has been idle for at
+        // least as long as a stretch break, treat it as equivalent rest and
+        // reset the work timer so a break doesn't fire right after return.
+        if !active && !breakInProgress {
+            continuousIdleSeconds += pollInterval
+            if continuousIdleSeconds >= TimeInterval(stretchDurationSeconds)
+                && activeSecondsSinceLastReminder > 0 {
+                activeSecondsSinceLastReminder = 0
+                snoozesUsedThisCycle = 0
+                warningShownThisCycle = false
+                postureNudgeShownThisCycle = false
+                DispatchQueue.main.async { [weak self] in
+                    self?.onDismissWarning?()
+                }
+            }
+        } else {
+            continuousIdleSeconds = 0
+        }
+
         // Track continuous sitting — counts meeting time too since the user is
         // still seated.  Only resets when a break is completed or user goes idle.
         if (active || inMeeting) && !breakInProgress {
@@ -456,16 +484,16 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
         let thresholdSeconds = TimeInterval(reminderIntervalMinutes) * 60
         let timeUntilBreak = thresholdSeconds - activeSecondsSinceLastReminder
 
-        // Posture micro-nudge at the halfway point (suppress during meetings)
-        if !postureNudgeShownThisCycle && !inMeeting && activeSecondsSinceLastReminder >= (thresholdSeconds / 2) && timeUntilBreak > warningLeadTimeSeconds {
+        // Posture micro-nudge at the halfway point (suppress during meetings and idle)
+        if !postureNudgeShownThisCycle && active && !inMeeting && activeSecondsSinceLastReminder >= (thresholdSeconds / 2) && timeUntilBreak > warningLeadTimeSeconds {
             postureNudgeShownThisCycle = true
             DispatchQueue.main.async { [weak self] in
                 self?.onPostureNudge?()
             }
         }
 
-        // Show warning banner before the break (suppress during meetings)
-        if blockingModeEnabled && !warningShownThisCycle && !inMeeting && timeUntilBreak <= warningLeadTimeSeconds && timeUntilBreak > 0 {
+        // Show warning banner before the break (suppress during meetings and idle)
+        if blockingModeEnabled && !warningShownThisCycle && active && !inMeeting && timeUntilBreak <= warningLeadTimeSeconds && timeUntilBreak > 0 {
             warningShownThisCycle = true
             DispatchQueue.main.async { [weak self] in
                 guard let self else { return }
@@ -503,7 +531,7 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
             }
         }
 
-        if activeSecondsSinceLastReminder >= thresholdSeconds {
+        if active && activeSecondsSinceLastReminder >= thresholdSeconds {
             if inMeeting {
                 // Defer — don't reset the timer, fire as soon as meeting ends
                 return
