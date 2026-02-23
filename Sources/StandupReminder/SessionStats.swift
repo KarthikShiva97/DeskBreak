@@ -13,6 +13,12 @@ final class SessionStats {
     /// Breaks snoozed in this session.
     private(set) var breaksSnoozed: Int = 0
 
+    /// Health warnings received this session.
+    private(set) var healthWarningsReceived: Int = 0
+
+    /// Longest continuous sitting streak (seconds) this session.
+    private(set) var longestContinuousSittingSeconds: TimeInterval = 0
+
     /// Consecutive days with at least one completed break.
     var dailyStreak: Int {
         defaults.integer(forKey: "dailyStreak")
@@ -48,10 +54,22 @@ final class SessionStats {
         breaksSnoozed += 1
     }
 
+    func recordHealthWarning() {
+        healthWarningsReceived += 1
+    }
+
+    func updateLongestContinuousSitting(_ seconds: TimeInterval) {
+        if seconds > longestContinuousSittingSeconds {
+            longestContinuousSittingSeconds = seconds
+        }
+    }
+
     func resetSession() {
         breaksCompleted = 0
         breaksSkipped = 0
         breaksSnoozed = 0
+        healthWarningsReceived = 0
+        longestContinuousSittingSeconds = 0
     }
 
     /// Summary string shown in the menu bar and on quit.
@@ -74,6 +92,16 @@ final class SessionStats {
         }
         if breaksSnoozed > 0 {
             lines.append("Breaks snoozed: \(breaksSnoozed)")
+        }
+
+        if longestContinuousSittingSeconds >= 3600 {
+            let hrs = Int(longestContinuousSittingSeconds) / 3600
+            let mins = (Int(longestContinuousSittingSeconds) % 3600) / 60
+            lines.append("Longest sitting streak: \(hrs)h \(mins)m")
+        }
+
+        if healthWarningsReceived > 0 {
+            lines.append("Health warnings: \(healthWarningsReceived)")
         }
 
         lines.append("Daily streak: \(dailyStreak) day\(dailyStreak == 1 ? "" : "s")")

@@ -46,7 +46,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         reminderManager.onStretchBreak = { [weak self] durationSeconds in
             self?.stretchOverlay.show(stretchDurationSeconds: durationSeconds) { [weak self] wasSkipped in
-                self?.reminderManager.breakDidEnd()
+                self?.reminderManager.breakDidEnd(completed: !wasSkipped)
                 if wasSkipped {
                     self?.reminderManager.stats.recordBreakSkipped()
                 } else {
@@ -58,6 +58,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         reminderManager.onPostureNudge = { [weak self] in
             self?.showPostureNudge()
+        }
+
+        reminderManager.onHealthWarning = { [weak self] continuousMinutes, isUrgent in
+            self?.showHealthWarning(continuousMinutes: continuousMinutes, isUrgent: isUrgent)
         }
 
         reminderManager.onDisableStateChanged = { [weak self] disabled, until in
@@ -188,6 +192,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             timeString = "\(mins)m"
         }
 
+        // Swap to warning icon when sitting 90+ min without a completed break
+        if let button = statusItem.button {
+            if reminderManager.isUrgentSittingWarning {
+                let config = NSImage.SymbolConfiguration(pointSize: 13, weight: .bold)
+                if let warnImage = NSImage(systemSymbolName: "exclamationmark.triangle.fill",
+                                           accessibilityDescription: "Prolonged sitting warning")?
+                    .withSymbolConfiguration(config) {
+                    button.image = warnImage
+                }
+            } else {
+                let config = NSImage.SymbolConfiguration(pointSize: 13, weight: .medium)
+                if let normalImage = NSImage(systemSymbolName: "figure.stand",
+                                             accessibilityDescription: "Standup Reminder")?
+                    .withSymbolConfiguration(config) {
+                    button.image = normalImage
+                }
+            }
+        }
+
         statusItem.button?.title = " \(timeString)"
 
         if hours > 0 {
@@ -215,6 +238,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         breaksMenuItem.title = "Breaks today: \(stats.breaksCompleted) completed, \(stats.breaksSkipped) skipped"
         let streak = stats.dailyStreak
         streakMenuItem.title = "Streak: \(streak) day\(streak == 1 ? "" : "s")"
+    }
+
+    // MARK: - Health Warning Notifications
+
+    private func showHealthWarning(continuousMinutes: Int, isUrgent: Bool) {
+        let content = UNMutableNotificationContent()
+
+        if isUrgent {
+            content.title = "Prolonged Sitting Alert"
+            content.body = "You've been sitting for \(continuousMinutes) minutes straight without completing a break. Prolonged sitting increases risk of back pain, poor circulation, and spinal disc compression. Please stand up and move now."
+            content.sound = UNNotificationSound.default
+        } else {
+            content.title = "Health Warning"
+            content.body = "You've been sitting continuously for \(continuousMinutes) minutes without completing a break. Take a moment to stand up and stretch — your spine will thank you."
+            content.sound = UNNotificationSound.default
+        }
+
+        let request = UNNotificationRequest(
+            identifier: isUrgent ? "health-warning-urgent" : "health-warning-firm",
+            content: content,
+            trigger: nil
+        )
+        UNUserNotificationCenter.current().add(request)
     }
 
     // MARK: - Posture Micro-Nudge
