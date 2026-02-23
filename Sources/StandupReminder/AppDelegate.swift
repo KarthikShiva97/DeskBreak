@@ -51,7 +51,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 if wasSkipped {
                     self?.reminderManager.stats.recordBreakSkipped()
                 } else {
-                    self?.reminderManager.stats.recordBreakCompleted()
+                    if let newStreak = self?.reminderManager.stats.recordBreakCompleted(),
+                       let milestone = WeeklyInsights.checkMilestone(streak: newStreak) {
+                        self?.showMilestoneNotification(days: milestone)
+                    }
                 }
                 self?.updateStatsMenuItems()
             }
@@ -78,6 +81,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Start the auto-updater
         AutoUpdater.shared.startPeriodicChecks()
+
+        // Send weekly insights notification on Mondays
+        if WeeklyInsights.shouldSendWeeklySummary() {
+            sendWeeklySummary()
+        }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -364,6 +372,48 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let request = UNNotificationRequest(
             identifier: "session-summary",
+            content: content,
+            trigger: nil
+        )
+        UNUserNotificationCenter.current().add(request)
+    }
+
+    // MARK: - Weekly Insights & Milestones
+
+    private func sendWeeklySummary() {
+        DispatchQueue.global(qos: .utility).async {
+            let summary = WeeklyInsights.generateSummary()
+            guard summary.daysActive > 0 else { return }
+
+            let body = WeeklyInsights.formatNotificationBody(summary)
+
+            DispatchQueue.main.async {
+                let content = UNMutableNotificationContent()
+                content.title = "Your Week in Review"
+                content.body = body
+                content.sound = .default
+
+                let request = UNNotificationRequest(
+                    identifier: "weekly-summary",
+                    content: content,
+                    trigger: nil
+                )
+                UNUserNotificationCenter.current().add(request)
+                WeeklyInsights.markWeeklySummarySent()
+            }
+        }
+    }
+
+    private func showMilestoneNotification(days: Int) {
+        let message = WeeklyInsights.milestoneMessage(days: days)
+
+        let content = UNMutableNotificationContent()
+        content.title = message.title
+        content.body = message.body
+        content.sound = .default
+
+        let request = UNNotificationRequest(
+            identifier: "streak-milestone-\(days)",
             content: content,
             trigger: nil
         )

@@ -40,10 +40,13 @@ final class SessionStats {
         }
     }
 
-    func recordBreakCompleted() {
+    /// Records a completed break. Returns the new daily streak value if it
+    /// just incremented today (for milestone detection), nil if already counted.
+    @discardableResult
+    func recordBreakCompleted() -> Int? {
         breaksCompleted += 1
         defaults.set(totalBreaksAllTime + 1, forKey: "totalBreaksAllTime")
-        markTodayActive()
+        return markTodayActive()
     }
 
     func recordBreakSkipped() {
@@ -111,24 +114,30 @@ final class SessionStats {
 
     // MARK: - Daily streak persistence
 
-    private func markTodayActive() {
-        updateDailyStreak()
+    /// Returns the new streak value if it changed today, nil if already counted.
+    private func markTodayActive() -> Int? {
+        let result = updateDailyStreak()
         defaults.set(Self.todayString(), forKey: "lastActiveDate")
+        return result
     }
 
-    private func updateDailyStreak() {
+    /// Returns the new streak value if it changed, nil if already counted today.
+    private func updateDailyStreak() -> Int? {
         let today = Self.todayString()
         let lastActive = defaults.string(forKey: "lastActiveDate") ?? ""
         let yesterday = Self.yesterdayString()
 
         if lastActive == today {
             // Already counted today — don't double-increment
-            return
+            return nil
         } else if lastActive == yesterday {
-            defaults.set(dailyStreak + 1, forKey: "dailyStreak")
+            let newStreak = dailyStreak + 1
+            defaults.set(newStreak, forKey: "dailyStreak")
+            return newStreak
         } else {
             // First time or streak broken — start at 1
             defaults.set(1, forKey: "dailyStreak")
+            return 1
         }
     }
 
