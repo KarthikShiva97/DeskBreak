@@ -244,22 +244,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// Rotating urgent messages — each highlights a different science-backed risk
     /// so repeated 10-minute alerts don't become wallpaper.
+    ///
+    /// Sources:
+    ///   Disc pressure  — Wilke et al., Spine 1999
+    ///   Leg blood flow — Thosar et al., Med Sci Sports Exerc 2015
+    ///   DVT dose-resp  — Healy et al., J R Soc Med 2010
+    ///   Enzyme/EMG     — Bey & Hamilton, J Physiol 2003
+    ///   Mortality      — Ekelund et al., Lancet 2016
+    ///   Life expect.   — Veerman et al., Br J Sports Med 2012
+    ///   Disc nutrition — Urban et al., Spine 2004
     private static let urgentWarnings: [(title: String, body: String)] = [
         (
-            title: "Spinal Disc Damage Risk",
-            body: "Your spinal discs have no blood supply. They depend on movement to pump in nutrients and flush waste. %d minutes of static compression is slowly starving them — this is exactly how herniated discs and chronic, irreversible back pain develop."
+            title: "Your Spinal Discs Are Starving",
+            body: "Your spinal discs have zero blood supply. The only way they get oxygen and nutrients is through movement — a pumping action when you stand, walk, and bend. %d minutes of sitting still is starving them. This is exactly how disc herniations and chronic back pain start. (Source: Urban et al., Spine 2004)"
         ),
         (
-            title: "Blood Clot Risk — DVT Warning",
-            body: "%d minutes without standing. Blood is pooling in your legs right now, and clot risk is climbing. A deep vein thrombosis can break loose, travel to your lungs, and kill you. This is not hypothetical — DVT kills over 100,000 Americans yearly. Walk for 2 minutes."
+            title: "Blood Clot Risk Is Rising",
+            body: "%d minutes without standing. Your risk of a dangerous blood clot in your legs goes up about 20%% for every hour you sit without getting up. If that clot travels to your lungs, it can kill you within hours. This happens to roughly 100,000 people a year. Stand up and walk for 2 minutes. (Source: Healy et al., J R Soc Med 2010)"
         ),
         (
-            title: "Metabolic Shutdown in Progress",
-            body: "After 90 minutes of sitting, fat-breaking enzyme activity drops by 90%%. Electrical activity in your leg muscles is near zero. Calorie burn has flatlined to 1 per minute. You are in a metabolic state linked to type 2 diabetes and heart disease. Stand up now."
+            title: "Your Muscles Are Shutting Down",
+            body: "Your leg muscles have nearly switched off — electrical activity is at 1%% of normal. The enzyme that clears fat from your blood has dropped by up to 95%%. This leads to type 2 diabetes and heart disease over time. The worst part: going to the gym later won't undo this. You have to break the sitting. Now. (Source: Hamilton et al., J Physiol 2003)"
         ),
         (
             title: "You Are Shortening Your Life",
-            body: "A study of over 1 million adults found that sitting this long without a break carries mortality risk comparable to smoking. Each unbroken hour of sitting costs roughly 22 minutes of life expectancy. You've been seated for %d minutes. The damage is compounding right now."
+            body: "You've been sitting for %d minutes straight. A study of over 1 million people found this level of sitting raises your risk of early death by 59%%. Each unbroken hour costs about 22 minutes of life expectancy — roughly the same as smoking two cigarettes. This damage builds up the longer you sit. (Sources: Ekelund, Lancet 2016; Veerman, Br J Sports Med 2012)"
         ),
     ]
 
@@ -275,7 +284,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             content.sound = UNNotificationSound.default
         } else {
             content.title = "\(continuousMinutes) Minutes Without Moving"
-            content.body = "Sitting for 1 hour straight has increased the pressure on your spinal discs by 40% and cut blood flow in your legs nearly in half. Research links each unbroken hour of sitting to a 22-minute reduction in life expectancy. Stand up — even 60 seconds reverses the damage building up right now."
+            content.body = "Slouching at your desk puts up to 66% more pressure on your spinal discs than standing (Wilke, Spine 1999). Blood flow in your legs has dropped by half (Thosar, MSSE 2015). Your blood clot risk grows 20% every hour you sit still (Healy, JRSM 2010). Get up — even 60 seconds helps."
             content.sound = UNNotificationSound.default
         }
 
