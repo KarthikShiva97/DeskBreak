@@ -10,6 +10,7 @@ let package = Package(
             path: "Sources/StandupReminder",
             linkerSettings: [
                 .linkedFramework("Cocoa"),
+                .linkedFramework("CoreAudio"),
                 .linkedFramework("IOKit"),
                 .linkedFramework("UserNotifications"),
             ]

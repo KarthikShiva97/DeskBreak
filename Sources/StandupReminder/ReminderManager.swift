@@ -1,4 +1,5 @@
 import Cocoa
+import CoreAudio
 import Foundation
 import UserNotifications
 
@@ -297,8 +298,12 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
 
     // MARK: - Meeting Detection
 
-    /// Returns true if a known video call or screen-sharing app is running.
-    /// Used to pause the work timer during meetings and defer overlay breaks.
+    /// Returns true if a known video-call / screen-sharing app is running AND
+    /// a microphone is actively being captured — indicating a live call.
+    ///
+    /// Checking only whether the app process is alive is insufficient because
+    /// apps like Teams and Zoom keep running as background processes long after
+    /// a meeting ends, which causes the break to stay deferred forever.
     private func isInMeeting() -> Bool {
         let meetingBundleIDs = [
             "us.zoom.xos",               // Zoom
@@ -312,15 +317,78 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
             "OBS",
         ]
 
+        var meetingAppRunning = false
         for app in NSWorkspace.shared.runningApplications {
             if let bundleID = app.bundleIdentifier,
                meetingBundleIDs.contains(where: { bundleID.hasPrefix($0) }),
                !app.isTerminated {
-                return true
+                meetingAppRunning = true
+                break
             }
             if let name = app.localizedName,
                meetingNameFragments.contains(where: { name.contains($0) }),
                !app.isTerminated {
+                meetingAppRunning = true
+                break
+            }
+        }
+
+        guard meetingAppRunning else { return false }
+
+        // A meeting app is running — but is a call actually in progress?
+        // Check whether any microphone is actively being captured.  Meeting
+        // apps keep the audio HAL device open for the entire call (even when
+        // the user mutes), so this reliably indicates an active meeting.
+        return isAudioInputActive()
+    }
+
+    /// Returns `true` when any hardware audio-input device (microphone) is
+    /// actively being captured by some process on the system.
+    private func isAudioInputActive() -> Bool {
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyDevices,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+
+        var dataSize: UInt32 = 0
+        guard AudioObjectGetPropertyDataSize(
+            AudioObjectID(kAudioObjectSystemObject),
+            &address, 0, nil, &dataSize
+        ) == noErr, dataSize > 0 else { return false }
+
+        let deviceCount = Int(dataSize) / MemoryLayout<AudioDeviceID>.size
+        var devices = [AudioDeviceID](repeating: 0, count: deviceCount)
+        guard AudioObjectGetPropertyData(
+            AudioObjectID(kAudioObjectSystemObject),
+            &address, 0, nil, &dataSize, &devices
+        ) == noErr else { return false }
+
+        for device in devices {
+            // Only consider devices that have input streams (i.e. microphones).
+            var inputStreamAddr = AudioObjectPropertyAddress(
+                mSelector: kAudioDevicePropertyStreams,
+                mScope: kAudioObjectPropertyScopeInput,
+                mElement: kAudioObjectPropertyElementMain
+            )
+            var streamSize: UInt32 = 0
+            guard AudioObjectGetPropertyDataSize(
+                device, &inputStreamAddr, 0, nil, &streamSize
+            ) == noErr, streamSize > 0 else { continue }
+
+            // Check if this input-capable device is currently being used.
+            var runAddr = AudioObjectPropertyAddress(
+                mSelector: kAudioDevicePropertyDeviceIsRunningSomewhere,
+                mScope: kAudioObjectPropertyScopeGlobal,
+                mElement: kAudioObjectPropertyElementMain
+            )
+            var isRunning: UInt32 = 0
+            var runSize = UInt32(MemoryLayout<UInt32>.size)
+            guard AudioObjectGetPropertyData(
+                device, &runAddr, 0, nil, &runSize, &isRunning
+            ) == noErr else { continue }
+
+            if isRunning != 0 {
                 return true
             }
         }
