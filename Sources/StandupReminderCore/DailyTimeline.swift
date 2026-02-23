@@ -4,7 +4,7 @@ import Foundation
 
 /// Every meaningful state change during the workday is recorded as a `TimelineEvent`.
 /// Events are append-only; the store never mutates past entries.
-enum TimelineEventKind: String, Codable {
+public enum TimelineEventKind: String, Codable {
     case workStarted        // User became active after idle / app launch
     case workEnded          // User went idle (past idle threshold)
     case breakCompleted     // Stretch break finished (full duration)
@@ -19,15 +19,15 @@ enum TimelineEventKind: String, Codable {
 }
 
 /// A single timestamped event in today's timeline.
-struct TimelineEvent: Codable, Identifiable {
-    let id: UUID
-    let timestamp: Date
-    let kind: TimelineEventKind
+public struct TimelineEvent: Codable, Identifiable {
+    public let id: UUID
+    public let timestamp: Date
+    public let kind: TimelineEventKind
 
     /// Optional human-readable detail (e.g., "60 min continuous sitting" for health warnings).
-    let detail: String?
+    public let detail: String?
 
-    init(kind: TimelineEventKind, detail: String? = nil, timestamp: Date = Date()) {
+    public init(kind: TimelineEventKind, detail: String? = nil, timestamp: Date = Date()) {
         self.id = UUID()
         self.timestamp = timestamp
         self.kind = kind
@@ -39,7 +39,7 @@ struct TimelineEvent: Codable, Identifiable {
 
 /// A continuous span of time in a particular state, derived from raw events.
 /// Used by the visual timeline to draw colored blocks.
-enum TimelineSegmentKind {
+public enum TimelineSegmentKind: Hashable {
     case working
     case idle
     case onBreak
@@ -47,13 +47,19 @@ enum TimelineSegmentKind {
     case disabled
 }
 
-struct TimelineSegment: Identifiable {
-    let id = UUID()
-    let kind: TimelineSegmentKind
-    let start: Date
-    let end: Date
+public struct TimelineSegment: Identifiable {
+    public let id = UUID()
+    public let kind: TimelineSegmentKind
+    public let start: Date
+    public let end: Date
 
-    var duration: TimeInterval { end.timeIntervalSince(start) }
+    public var duration: TimeInterval { end.timeIntervalSince(start) }
+
+    public init(kind: TimelineSegmentKind, start: Date, end: Date) {
+        self.kind = kind
+        self.start = start
+        self.end = end
+    }
 }
 
 // MARK: - Daily Timeline Store
@@ -62,8 +68,8 @@ struct TimelineSegment: Identifiable {
 ///
 /// Persistence uses JSON files in Application Support, one per day, so history
 /// survives app restarts. Old files are pruned automatically.
-final class DailyTimelineStore {
-    private(set) var events: [TimelineEvent] = []
+public final class DailyTimelineStore {
+    public private(set) var events: [TimelineEvent] = []
     private let dateString: String
     private let fileURL: URL
 
@@ -71,11 +77,11 @@ final class DailyTimelineStore {
     private static let retentionDays = 30
 
     /// The calendar day this store represents (yyyy-MM-dd).
-    var day: String { dateString }
+    public var day: String { dateString }
 
     // MARK: - Init
 
-    init(date: Date = Date()) {
+    public init(date: Date = Date()) {
         self.dateString = Self.dateFormatter.string(from: date)
         self.fileURL = Self.storageDirectory.appendingPathComponent("\(dateString).json")
         loadFromDisk()
@@ -84,7 +90,7 @@ final class DailyTimelineStore {
     // MARK: - Recording
 
     /// Append a new event. Thread-safe for main-thread callers (all our callers are).
-    func record(_ kind: TimelineEventKind, detail: String? = nil) {
+    public func record(_ kind: TimelineEventKind, detail: String? = nil) {
         let event = TimelineEvent(kind: kind, detail: detail)
         events.append(event)
         saveToDisk()
@@ -93,9 +99,7 @@ final class DailyTimelineStore {
     // MARK: - Computed Segments
 
     /// Derive continuous time segments from raw events for the visual timeline.
-    /// Falls back to a single "working" segment from first event to now if events
-    /// are sparse.
-    func computeSegments() -> [TimelineSegment] {
+    public func computeSegments() -> [TimelineSegment] {
         guard !events.isEmpty else { return [] }
 
         var segments: [TimelineSegment] = []
@@ -106,7 +110,6 @@ final class DailyTimelineStore {
             let newKind: TimelineSegmentKind? = segmentKind(for: event.kind)
 
             if let newKind, newKind != currentKind {
-                // Close previous segment if it has nonzero duration
                 if event.timestamp > segmentStart {
                     segments.append(TimelineSegment(
                         kind: currentKind,
@@ -119,12 +122,10 @@ final class DailyTimelineStore {
             }
         }
 
-        // Close the final open segment up to "now" (or end of day if viewing history)
         let endTime: Date
         if isToday {
             endTime = Date()
         } else {
-            // End of that calendar day
             var components = Calendar.current.dateComponents([.year, .month, .day], from: events[0].timestamp)
             components.hour = 23
             components.minute = 59
@@ -146,7 +147,7 @@ final class DailyTimelineStore {
     // MARK: - Summary
 
     /// Total time spent in each segment kind today.
-    func durationByKind() -> [TimelineSegmentKind: TimeInterval] {
+    public func durationByKind() -> [TimelineSegmentKind: TimeInterval] {
         var result: [TimelineSegmentKind: TimeInterval] = [:]
         for segment in computeSegments() {
             result[segment.kind, default: 0] += segment.duration
@@ -155,7 +156,7 @@ final class DailyTimelineStore {
     }
 
     /// Count of events matching the given kind.
-    func count(of kind: TimelineEventKind) -> Int {
+    public func count(of kind: TimelineEventKind) -> Int {
         events.filter { $0.kind == kind }.count
     }
 
@@ -199,7 +200,7 @@ final class DailyTimelineStore {
     }
 
     /// Remove timeline files older than `retentionDays`.
-    static func pruneOldFiles() {
+    public static func pruneOldFiles() {
         let dir = storageDirectory
         let fm = FileManager.default
         guard let files = try? fm.contentsOfDirectory(atPath: dir.path) else { return }
@@ -219,7 +220,7 @@ final class DailyTimelineStore {
 
     /// Map event kinds to the segment state they transition into.
     /// Returns nil for events that don't change the active segment (e.g. snooze, health warning).
-    private func segmentKind(for eventKind: TimelineEventKind) -> TimelineSegmentKind? {
+    func segmentKind(for eventKind: TimelineEventKind) -> TimelineSegmentKind? {
         switch eventKind {
         case .workStarted:      return .working
         case .workEnded:        return .idle

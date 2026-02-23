@@ -1,3 +1,4 @@
+import StandupReminderCore
 import SwiftUI
 
 // MARK: - Stats Viewer View

@@ -1,23 +1,27 @@
 import Foundation
 
 /// A single day's aggregated statistics, persisted to disk.
-struct DailyStatsRecord: Codable, Identifiable {
-    var id: String { date }
+public struct DailyStatsRecord: Codable, Identifiable {
+    public var id: String { date }
 
     /// Date string in "yyyy-MM-dd" format.
-    let date: String
-    var breaksCompleted: Int = 0
-    var breaksSkipped: Int = 0
-    var breaksSnoozed: Int = 0
-    var healthWarningsReceived: Int = 0
-    var longestContinuousSittingSeconds: TimeInterval = 0
-    var totalWorkSeconds: TimeInterval = 0
+    public let date: String
+    public var breaksCompleted: Int = 0
+    public var breaksSkipped: Int = 0
+    public var breaksSnoozed: Int = 0
+    public var healthWarningsReceived: Int = 0
+    public var longestContinuousSittingSeconds: TimeInterval = 0
+    public var totalWorkSeconds: TimeInterval = 0
+
+    public init(date: String) {
+        self.date = date
+    }
 }
 
 /// Persists daily stats to a JSON file in Application Support.
 /// Thread-safe via a serial queue.
-final class DailyStatsStore {
-    static let shared = DailyStatsStore()
+public final class DailyStatsStore {
+    public static let shared = DailyStatsStore()
 
     private let queue = DispatchQueue(label: "com.standupreminder.dailystats")
     private var cache: [String: DailyStatsRecord] = [:]
@@ -42,12 +46,12 @@ final class DailyStatsStore {
     // MARK: - Public API
 
     /// Returns the record for a given date string ("yyyy-MM-dd"), or nil if none exists.
-    func record(for dateString: String) -> DailyStatsRecord? {
+    public func record(for dateString: String) -> DailyStatsRecord? {
         queue.sync { cache[dateString] }
     }
 
     /// Returns the record for today, creating one if needed.
-    func todayRecord() -> DailyStatsRecord {
+    public func todayRecord() -> DailyStatsRecord {
         let today = Self.dateFormatter.string(from: Date())
         return queue.sync {
             cache[today] ?? DailyStatsRecord(date: today)
@@ -55,7 +59,7 @@ final class DailyStatsStore {
     }
 
     /// Returns records for a date range (inclusive).
-    func records(from startDate: Date, to endDate: Date) -> [DailyStatsRecord] {
+    public func records(from startDate: Date, to endDate: Date) -> [DailyStatsRecord] {
         let calendar = Calendar.current
         var results: [DailyStatsRecord] = []
         var current = calendar.startOfDay(for: startDate)
@@ -72,34 +76,34 @@ final class DailyStatsStore {
     }
 
     /// Returns all stored records sorted by date.
-    func allRecords() -> [DailyStatsRecord] {
+    public func allRecords() -> [DailyStatsRecord] {
         queue.sync {
             cache.values.sorted { $0.date < $1.date }
         }
     }
 
     /// Record a completed break for today.
-    func recordBreakCompleted() {
+    public func recordBreakCompleted() {
         mutateToday { $0.breaksCompleted += 1 }
     }
 
     /// Record a skipped break for today.
-    func recordBreakSkipped() {
+    public func recordBreakSkipped() {
         mutateToday { $0.breaksSkipped += 1 }
     }
 
     /// Record a snoozed break for today.
-    func recordBreakSnoozed() {
+    public func recordBreakSnoozed() {
         mutateToday { $0.breaksSnoozed += 1 }
     }
 
     /// Record a health warning for today.
-    func recordHealthWarning() {
+    public func recordHealthWarning() {
         mutateToday { $0.healthWarningsReceived += 1 }
     }
 
     /// Update longest continuous sitting if the new value is higher.
-    func updateLongestContinuousSitting(_ seconds: TimeInterval) {
+    public func updateLongestContinuousSitting(_ seconds: TimeInterval) {
         mutateToday { record in
             if seconds > record.longestContinuousSittingSeconds {
                 record.longestContinuousSittingSeconds = seconds
@@ -108,14 +112,12 @@ final class DailyStatsStore {
     }
 
     /// Update total work seconds for today.
-    func updateTotalWorkSeconds(_ seconds: TimeInterval) {
+    public func updateTotalWorkSeconds(_ seconds: TimeInterval) {
         mutateToday { $0.totalWorkSeconds = seconds }
     }
 
-    /// Seed today's record with absolute values restored from another source
-    /// (e.g. timeline). Used when DailyStatsStore has no data for today but
-    /// the timeline does — keeps the two stores in sync going forward.
-    func seedToday(
+    /// Seed today's record with absolute values restored from another source.
+    public func seedToday(
         breaksCompleted: Int,
         breaksSkipped: Int,
         breaksSnoozed: Int,
@@ -132,7 +134,7 @@ final class DailyStatsStore {
     }
 
     /// Flush any pending changes to disk immediately.
-    func flush() {
+    public func flush() {
         queue.sync {
             if dirty {
                 saveToDisk()
@@ -155,11 +157,9 @@ final class DailyStatsStore {
 
     private var saveWorkItem: DispatchWorkItem?
 
-    /// Debounce disk writes — save at most once per second.
     private func scheduleSave() {
         saveWorkItem?.cancel()
         let item = DispatchWorkItem { [weak self] in
-            // Already executing on `queue`, so call saveToDisk directly.
             self?.saveToDisk()
         }
         saveWorkItem = item
@@ -179,7 +179,6 @@ final class DailyStatsStore {
         }
     }
 
-    /// Must be called on `queue`.
     private func saveToDisk() {
         do {
             let records = Array(cache.values).sorted { $0.date < $1.date }

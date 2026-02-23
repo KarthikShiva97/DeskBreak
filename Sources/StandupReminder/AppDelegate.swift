@@ -1,4 +1,5 @@
 import Cocoa
+import StandupReminderCore
 import SwiftUI
 import UserNotifications
 
