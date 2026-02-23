@@ -167,11 +167,15 @@ private struct WeeklyStatsView: View {
         }
     }
 
-    private var weekRangeLabel: String {
+    private static let weekRangeFormatter: DateFormatter = {
         let f = DateFormatter()
         f.dateFormat = "MMM d"
-        let start = f.string(from: weekStart)
-        let end = f.string(from: weekEnd)
+        return f
+    }()
+
+    private var weekRangeLabel: String {
+        let start = Self.weekRangeFormatter.string(from: weekStart)
+        let end = Self.weekRangeFormatter.string(from: weekEnd)
         return "\(start) – \(end)"
     }
 

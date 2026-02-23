@@ -288,7 +288,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         ),
         (
             title: "Your Muscles Are Shutting Down",
-            body: "Your leg muscles have nearly switched off — electrical activity is at 1%% of normal. The enzyme that clears fat from your blood has dropped by up to 95%%. This leads to type 2 diabetes and heart disease over time. The worst part: going to the gym later won't undo this. You have to break the sitting. Now. (Source: Hamilton et al., J Physiol 2003)"
+            body: "After %d minutes, your leg muscles have nearly switched off — electrical activity is at 1%% of normal. The enzyme that clears fat from your blood has dropped by up to 95%%. This leads to type 2 diabetes and heart disease over time. The worst part: going to the gym later won't undo this. You have to break the sitting. Now. (Source: Hamilton et al., J Physiol 2003)"
         ),
         (
             title: "You Are Shortening Your Life",
