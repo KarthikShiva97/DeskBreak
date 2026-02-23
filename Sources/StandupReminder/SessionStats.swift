@@ -44,24 +44,29 @@ final class SessionStats {
         breaksCompleted += 1
         defaults.set(totalBreaksAllTime + 1, forKey: "totalBreaksAllTime")
         markTodayActive()
+        DailyStatsStore.shared.recordBreakCompleted()
     }
 
     func recordBreakSkipped() {
         breaksSkipped += 1
+        DailyStatsStore.shared.recordBreakSkipped()
     }
 
     func recordBreakSnoozed() {
         breaksSnoozed += 1
+        DailyStatsStore.shared.recordBreakSnoozed()
     }
 
     func recordHealthWarning() {
         healthWarningsReceived += 1
+        DailyStatsStore.shared.recordHealthWarning()
     }
 
     func updateLongestContinuousSitting(_ seconds: TimeInterval) {
         if seconds > longestContinuousSittingSeconds {
             longestContinuousSittingSeconds = seconds
         }
+        DailyStatsStore.shared.updateLongestContinuousSitting(seconds)
     }
 
     func resetSession() {

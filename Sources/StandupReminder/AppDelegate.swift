@@ -6,6 +6,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem!
     private let reminderManager = ReminderManager()
     private var preferencesWindowController: PreferencesWindowController?
+    private var statsWindowController: StatsViewerWindowController?
     private let stretchOverlay = StretchOverlayWindowController()
     private let warningBanner = WarningBannerController()
 
@@ -27,6 +28,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             DispatchQueue.main.async {
                 self?.updateMenuBarDisplay(totalActive: totalActive, sinceLast: sinceLast, isActive: isActive, inMeeting: inMeeting)
             }
+            // Persist work time to the daily store every tick (~5s)
+            DailyStatsStore.shared.updateTotalWorkSeconds(totalActive)
         }
 
         reminderManager.onWarning = { [weak self] secondsUntilBreak, canSnooze in
@@ -77,6 +80,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationWillTerminate(_ notification: Notification) {
         reminderManager.stop()
         AutoUpdater.shared.stopPeriodicChecks()
+        DailyStatsStore.shared.updateTotalWorkSeconds(reminderManager.totalActiveSeconds)
+        DailyStatsStore.shared.flush()
         showSessionSummaryIfNeeded()
     }
 
@@ -117,6 +122,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         streakMenuItem = NSMenuItem(title: "Streak: \(streak) day\(streak == 1 ? "" : "s")", action: nil, keyEquivalent: "")
         streakMenuItem.isEnabled = false
         menu.addItem(streakMenuItem)
+
+        let statsItem = NSMenuItem(title: "View Stats…", action: #selector(openStats), keyEquivalent: "s")
+        statsItem.target = self
+        menu.addItem(statsItem)
 
         menu.addItem(.separator())
 
@@ -422,6 +431,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
         preferencesWindowController?.showWindow()
+    }
+
+    @objc private func openStats() {
+        let stats = reminderManager.stats
+        // Re-create each time so live values are fresh
+        statsWindowController = StatsViewerWindowController(
+            breaksCompleted: stats.breaksCompleted,
+            breaksSkipped: stats.breaksSkipped,
+            breaksSnoozed: stats.breaksSnoozed,
+            healthWarnings: stats.healthWarningsReceived,
+            longestSitting: stats.longestContinuousSittingSeconds,
+            totalWorkSeconds: reminderManager.totalActiveSeconds
+        )
+        statsWindowController?.showWindow()
     }
 
     @objc private func quitApp() {
