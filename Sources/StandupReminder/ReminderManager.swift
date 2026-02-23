@@ -249,6 +249,11 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
         return min(stretchDurationSeconds + breakCyclesToday * 15, cap)
     }
 
+    /// Returns the current HID idle time (for sitting detection during breaks).
+    func currentIdleTime() -> TimeInterval {
+        activityMonitor.systemIdleTime()
+    }
+
     // MARK: - Meeting Detection
 
     /// Returns true if a known video call or screen-sharing app is running.

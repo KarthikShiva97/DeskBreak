@@ -29,6 +29,8 @@ private let exercises: [StretchExercise] = [
 
 struct StretchOverlayView: View {
     let stretchDurationSeconds: Int
+    let checkIdleTime: (() -> TimeInterval)?
+    let onSittingDetected: (() -> Void)?
     let onComplete: (_ wasSkipped: Bool) -> Void
 
     @State private var secondsRemaining: Int
@@ -40,11 +42,18 @@ struct StretchOverlayView: View {
     @State private var showCompletion = false
     @State private var completed = false
 
+    // Sitting detection state
+    @State private var showSittingNudge = false
+    @State private var consecutiveActiveChecks = 0
+    @State private var sittingAlreadyReported = false
+
     // Use Combine timer instead of Timer.scheduledTimer for SwiftUI safety
     private let timerPublisher = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
-    init(stretchDurationSeconds: Int, onComplete: @escaping (_ wasSkipped: Bool) -> Void) {
+    init(stretchDurationSeconds: Int, checkIdleTime: (() -> TimeInterval)? = nil, onSittingDetected: (() -> Void)? = nil, onComplete: @escaping (_ wasSkipped: Bool) -> Void) {
         self.stretchDurationSeconds = stretchDurationSeconds
+        self.checkIdleTime = checkIdleTime
+        self.onSittingDetected = onSittingDetected
         self.onComplete = onComplete
         self._secondsRemaining = State(initialValue: stretchDurationSeconds)
         // Safe default fallback instead of force unwrap
@@ -97,6 +106,22 @@ struct StretchOverlayView: View {
                 .font(.system(size: 48, weight: .bold, design: .rounded))
                 .foregroundStyle(.white)
                 .scaleEffect(breathingScale)
+
+            if showSittingNudge {
+                HStack(spacing: 12) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: 20))
+                        .foregroundStyle(.yellow)
+                    Text("Still at your desk? Stand up and step back!")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundStyle(.white)
+                }
+                .padding(.horizontal, 24)
+                .padding(.vertical, 14)
+                .background(.orange.opacity(0.25))
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
 
             VStack(spacing: 16) {
                 Image(systemName: currentExercise.symbol)
@@ -218,6 +243,30 @@ struct StretchOverlayView: View {
                     skipEnabled = true
                 }
             }
+
+            // Sitting detection: after 15s grace period, check every 5s
+            if elapsed >= 15 && elapsed % 5 == 0, let checkIdleTime {
+                let idle = checkIdleTime()
+                if idle < 3 {
+                    consecutiveActiveChecks += 1
+                    if consecutiveActiveChecks >= 2 && !showSittingNudge {
+                        withAnimation(.spring(duration: 0.5)) {
+                            showSittingNudge = true
+                        }
+                        if !sittingAlreadyReported {
+                            sittingAlreadyReported = true
+                            onSittingDetected?()
+                        }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 8) {
+                            withAnimation(.easeOut(duration: 0.5)) {
+                                showSittingNudge = false
+                            }
+                        }
+                    }
+                } else {
+                    consecutiveActiveChecks = 0
+                }
+            }
         } else {
             complete(skipped: false)
         }
@@ -248,7 +297,7 @@ final class StretchOverlayWindowController {
     private var windows: [NSWindow] = []
     private var generation: Int = 0
 
-    func show(stretchDurationSeconds: Int, onComplete: @escaping (_ wasSkipped: Bool) -> Void) {
+    func show(stretchDurationSeconds: Int, checkIdleTime: (() -> TimeInterval)? = nil, onSittingDetected: (() -> Void)? = nil, onComplete: @escaping (_ wasSkipped: Bool) -> Void) {
         dismiss()
 
         generation += 1
@@ -269,6 +318,8 @@ final class StretchOverlayWindowController {
         for screen in NSScreen.screens {
             let overlayView = StretchOverlayView(
                 stretchDurationSeconds: stretchDurationSeconds,
+                checkIdleTime: checkIdleTime,
+                onSittingDetected: onSittingDetected,
                 onComplete: safeComplete
             )
 

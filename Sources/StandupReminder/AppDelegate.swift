@@ -45,7 +45,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         reminderManager.onStretchBreak = { [weak self] durationSeconds in
-            self?.stretchOverlay.show(stretchDurationSeconds: durationSeconds) { [weak self] wasSkipped in
+            self?.stretchOverlay.show(
+                stretchDurationSeconds: durationSeconds,
+                checkIdleTime: { [weak self] in
+                    self?.reminderManager.currentIdleTime() ?? 0
+                },
+                onSittingDetected: { [weak self] in
+                    self?.reminderManager.stats.recordSittingDetected()
+                }
+            ) { [weak self] wasSkipped in
                 self?.reminderManager.breakDidEnd()
                 if wasSkipped {
                     self?.reminderManager.stats.recordBreakSkipped()
