@@ -112,6 +112,25 @@ final class DailyStatsStore {
         mutateToday { $0.totalWorkSeconds = seconds }
     }
 
+    /// Seed today's record with absolute values restored from another source
+    /// (e.g. timeline). Used when DailyStatsStore has no data for today but
+    /// the timeline does — keeps the two stores in sync going forward.
+    func seedToday(
+        breaksCompleted: Int,
+        breaksSkipped: Int,
+        breaksSnoozed: Int,
+        healthWarnings: Int,
+        totalWorkSeconds: TimeInterval
+    ) {
+        mutateToday { record in
+            record.breaksCompleted = breaksCompleted
+            record.breaksSkipped = breaksSkipped
+            record.breaksSnoozed = breaksSnoozed
+            record.healthWarningsReceived = healthWarnings
+            record.totalWorkSeconds = totalWorkSeconds
+        }
+    }
+
     /// Flush any pending changes to disk immediately.
     func flush() {
         queue.sync {
