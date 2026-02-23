@@ -48,6 +48,12 @@ final class SessionStats {
         breaksSnoozed += 1
     }
 
+    func resetSession() {
+        breaksCompleted = 0
+        breaksSkipped = 0
+        breaksSnoozed = 0
+    }
+
     /// Summary string shown in the menu bar and on quit.
     func sessionSummary(totalWorkSeconds: TimeInterval) -> String {
         let hours = Int(totalWorkSeconds) / 3600
@@ -78,9 +84,8 @@ final class SessionStats {
     // MARK: - Daily streak persistence
 
     private func markTodayActive() {
-        let today = Self.todayString()
-        defaults.set(today, forKey: "lastActiveDate")
         updateDailyStreak()
+        defaults.set(Self.todayString(), forKey: "lastActiveDate")
     }
 
     private func updateDailyStreak() {
@@ -89,18 +94,12 @@ final class SessionStats {
         let yesterday = Self.yesterdayString()
 
         if lastActive == today {
-            // Already active today, streak is current
+            // Already counted today — don't double-increment
             return
         } else if lastActive == yesterday {
-            // Continuing streak from yesterday
-            let current = defaults.integer(forKey: "dailyStreak")
-            defaults.set(current + 1, forKey: "dailyStreak")
-            defaults.set(today, forKey: "lastActiveDate")
-        } else if lastActive.isEmpty {
-            // First time
-            defaults.set(1, forKey: "dailyStreak")
+            defaults.set(dailyStreak + 1, forKey: "dailyStreak")
         } else {
-            // Streak broken
+            // First time or streak broken — start at 1
             defaults.set(1, forKey: "dailyStreak")
         }
     }

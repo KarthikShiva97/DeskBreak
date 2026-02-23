@@ -65,8 +65,11 @@ struct WarningBannerView: View {
             withAnimation(.easeOut(duration: 0.5)) { opacity = 1 }
         }
         .onReceive(timerPublisher) { _ in
-            if countdown > 0 {
+            if countdown > 1 {
                 withAnimation { countdown -= 1 }
+            } else {
+                // Don't show "0s" — the break overlay is about to appear
+                withAnimation(.easeOut(duration: 0.3)) { opacity = 0 }
             }
         }
     }

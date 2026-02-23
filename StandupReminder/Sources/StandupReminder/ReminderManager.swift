@@ -168,6 +168,7 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
         snoozesUsedThisCycle = 0
         warningShownThisCycle = false
         postureNudgeShownThisCycle = false
+        breakCyclesToday = 0
         start()
         onDisableStateChanged?(false, nil)
     }
@@ -183,6 +184,7 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
         warningShownThisCycle = false
         postureNudgeShownThisCycle = false
         breakCyclesToday = 0
+        stats.resetSession()
     }
 
     /// Manually trigger a break right now (e.g., user feels stiffness).
@@ -227,10 +229,11 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
         return "\(Int(seconds / 60))m"
     }
 
-    /// Adaptive break duration: increases by 15s per cycle, capped at 120s.
-    /// Your spine needs more decompression the longer you sit.
+    /// Adaptive break duration: increases by 15s per cycle, capped at 120s or
+    /// the user's configured duration (whichever is larger — never reduce their setting).
     var adaptiveBreakDuration: Int {
-        min(stretchDurationSeconds + breakCyclesToday * 15, 120)
+        let cap = max(stretchDurationSeconds, 120)
+        return min(stretchDurationSeconds + breakCyclesToday * 15, cap)
     }
 
     // MARK: - Meeting Detection
@@ -328,10 +331,9 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
     private func fireReminder() {
         breakCyclesToday += 1
         let duration = adaptiveBreakDuration
-        let sharing = isInMeeting()
 
         let content = UNMutableNotificationContent()
-        content.title = sharing ? "Standup Reminder (meeting detected)" : "Standup Reminder"
+        content.title = "Standup Reminder"
         let minutes = Int(totalActiveSeconds) / 60
         content.body = "You've been working for \(minutes) minutes. Time to stand up and decompress your spine!"
         content.sound = .default
@@ -348,10 +350,11 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
             }
         }
 
+        // tick() already verified we're NOT in a meeting before calling this
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
             self.onDismissWarning?()
-            if self.blockingModeEnabled && !sharing {
+            if self.blockingModeEnabled {
                 self.onStretchBreak?(duration)
             }
         }

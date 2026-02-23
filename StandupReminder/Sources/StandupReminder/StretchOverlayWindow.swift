@@ -206,7 +206,8 @@ struct StretchOverlayView: View {
             let elapsed = stretchDurationSeconds - secondsRemaining
             if elapsed > 0 && elapsed % 20 == 0 {
                 withAnimation(.spring(duration: 0.5)) {
-                    if let next = exercises.randomElement() {
+                    let others = exercises.filter { $0.name != currentExercise.name }
+                    if let next = others.randomElement() {
                         currentExercise = next
                     }
                 }

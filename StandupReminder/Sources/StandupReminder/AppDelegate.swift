@@ -308,6 +308,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         reminderManager.resetSession()
         statusItem.button?.title = " 0m"
         timerMenuItem.title = "Working: 0m"
+        statusMenuItem.title = "Next break: --"
+        updateStatsMenuItems()
     }
 
     @objc private func openPreferences() {
