@@ -46,7 +46,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         reminderManager.onStretchBreak = { [weak self] durationSeconds in
             self?.stretchOverlay.show(stretchDurationSeconds: durationSeconds) { [weak self] wasSkipped in
-                self?.reminderManager.breakDidEnd()
+                self?.reminderManager.breakDidEnd(completed: !wasSkipped)
                 if wasSkipped {
                     self?.reminderManager.stats.recordBreakSkipped()
                 } else {
@@ -58,6 +58,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         reminderManager.onPostureNudge = { [weak self] in
             self?.showPostureNudge()
+        }
+
+        reminderManager.onHealthWarning = { [weak self] continuousMinutes, isUrgent in
+            self?.showHealthWarning(continuousMinutes: continuousMinutes, isUrgent: isUrgent)
         }
 
         reminderManager.onDisableStateChanged = { [weak self] disabled, until in
@@ -196,6 +200,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             timeString = "\(mins)m"
         }
 
+        // Swap to warning icon when sitting 90+ min without a completed break
+        if let button = statusItem.button {
+            if reminderManager.isUrgentSittingWarning {
+                let config = NSImage.SymbolConfiguration(pointSize: 13, weight: .bold)
+                if let warnImage = NSImage(systemSymbolName: "exclamationmark.triangle.fill",
+                                           accessibilityDescription: "Prolonged sitting warning")?
+                    .withSymbolConfiguration(config) {
+                    button.image = warnImage
+                }
+            } else {
+                let config = NSImage.SymbolConfiguration(pointSize: 13, weight: .medium)
+                if let normalImage = NSImage(systemSymbolName: "figure.stand",
+                                             accessibilityDescription: "Standup Reminder")?
+                    .withSymbolConfiguration(config) {
+                    button.image = normalImage
+                }
+            }
+        }
+
         statusItem.button?.title = " \(timeString)"
 
         if hours > 0 {
@@ -223,6 +246,62 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         breaksMenuItem.title = "Breaks today: \(stats.breaksCompleted) completed, \(stats.breaksSkipped) skipped"
         let streak = stats.dailyStreak
         streakMenuItem.title = "Streak: \(streak) day\(streak == 1 ? "" : "s")"
+    }
+
+    // MARK: - Health Warning Notifications
+
+    /// Rotating urgent messages — each highlights a different science-backed risk
+    /// so repeated 10-minute alerts don't become wallpaper.
+    ///
+    /// Sources:
+    ///   Disc pressure  — Wilke et al., Spine 1999
+    ///   Leg blood flow — Thosar et al., Med Sci Sports Exerc 2015
+    ///   DVT dose-resp  — Healy et al., J R Soc Med 2010
+    ///   Enzyme/EMG     — Bey & Hamilton, J Physiol 2003
+    ///   Mortality      — Ekelund et al., Lancet 2016
+    ///   Life expect.   — Veerman et al., Br J Sports Med 2012
+    ///   Disc nutrition — Urban et al., Spine 2004
+    private static let urgentWarnings: [(title: String, body: String)] = [
+        (
+            title: "Your Spinal Discs Are Starving",
+            body: "Your spinal discs have zero blood supply. The only way they get oxygen and nutrients is through movement — a pumping action when you stand, walk, and bend. %d minutes of sitting still is starving them. This is exactly how disc herniations and chronic back pain start. (Source: Urban et al., Spine 2004)"
+        ),
+        (
+            title: "Blood Clot Risk Is Rising",
+            body: "%d minutes without standing. Your risk of a dangerous blood clot in your legs goes up about 20%% for every hour you sit without getting up. If that clot travels to your lungs, it can kill you within hours. This happens to roughly 100,000 people a year. Stand up and walk for 2 minutes. (Source: Healy et al., J R Soc Med 2010)"
+        ),
+        (
+            title: "Your Muscles Are Shutting Down",
+            body: "Your leg muscles have nearly switched off — electrical activity is at 1%% of normal. The enzyme that clears fat from your blood has dropped by up to 95%%. This leads to type 2 diabetes and heart disease over time. The worst part: going to the gym later won't undo this. You have to break the sitting. Now. (Source: Hamilton et al., J Physiol 2003)"
+        ),
+        (
+            title: "You Are Shortening Your Life",
+            body: "You've been sitting for %d minutes straight. A study of over 1 million people found this level of sitting raises your risk of early death by 59%%. Each unbroken hour costs about 22 minutes of life expectancy — roughly the same as smoking two cigarettes. This damage builds up the longer you sit. (Sources: Ekelund, Lancet 2016; Veerman, Br J Sports Med 2012)"
+        ),
+    ]
+
+    private func showHealthWarning(continuousMinutes: Int, isUrgent: Bool) {
+        let content = UNMutableNotificationContent()
+
+        if isUrgent {
+            // Rotate through urgent messages based on how long they've been sitting
+            let index = ((continuousMinutes - 90) / 10) % Self.urgentWarnings.count
+            let warning = Self.urgentWarnings[max(0, index)]
+            content.title = warning.title
+            content.body = String(format: warning.body, continuousMinutes, continuousMinutes)
+            content.sound = UNNotificationSound.default
+        } else {
+            content.title = "\(continuousMinutes) Minutes Without Moving"
+            content.body = "Slouching at your desk puts up to 66% more pressure on your spinal discs than standing (Wilke, Spine 1999). Blood flow in your legs has dropped by half (Thosar, MSSE 2015). Your blood clot risk grows 20% every hour you sit still (Healy, JRSM 2010). Get up — even 60 seconds helps."
+            content.sound = UNNotificationSound.default
+        }
+
+        let request = UNNotificationRequest(
+            identifier: isUrgent ? "health-warning-urgent" : "health-warning-firm",
+            content: content,
+            trigger: nil
+        )
+        UNUserNotificationCenter.current().add(request)
     }
 
     // MARK: - Posture Micro-Nudge

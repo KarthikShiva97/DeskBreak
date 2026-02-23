@@ -69,6 +69,32 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
     /// Whether a stretch break is currently in progress (don't count as work time).
     private(set) var breakInProgress = false
 
+    // MARK: - Continuous Sitting Tracker
+
+    /// Continuous seconds the user has been sitting without completing a break.
+    /// Unlike activeSecondsSinceLastReminder, this only resets when a break is
+    /// actually completed or the user goes idle — not when a break is skipped.
+    private(set) var continuousSittingSeconds: TimeInterval = 0
+
+    /// Whether the firm health warning (60 min) has fired this sitting period.
+    private var firmHealthWarningShown = false
+
+    /// Whether the urgent health warning (90 min) has fired this sitting period.
+    private var urgentHealthWarningShown = false
+
+    /// Timestamp (in continuousSittingSeconds) of last urgent notification, for repeats.
+    private var lastUrgentWarningAt: TimeInterval = 0
+
+    /// Health warning thresholds.
+    private static let firmWarningThreshold: TimeInterval = 60 * 60    // 60 minutes
+    private static let urgentWarningThreshold: TimeInterval = 90 * 60  // 90 minutes
+    private static let urgentRepeatInterval: TimeInterval = 10 * 60    // repeat every 10 min after 90
+
+    /// Whether the user is in the urgent continuous sitting state (90+ min without a completed break).
+    var isUrgentSittingWarning: Bool {
+        continuousSittingSeconds >= Self.urgentWarningThreshold
+    }
+
     // MARK: - Callbacks
 
     /// Callback when timed disable starts/ends so the UI can update.
@@ -88,6 +114,9 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
 
     /// Callback for a subtle posture nudge at the halfway point.
     var onPostureNudge: (() -> Void)?
+
+    /// Callback fired when continuous sitting exceeds health warning thresholds.
+    var onHealthWarning: ((_ continuousMinutes: Int, _ isUrgent: Bool) -> Void)?
 
     /// How often we poll for idle state (seconds).
     private let pollInterval: TimeInterval = 5
@@ -170,9 +199,13 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
         resumeTimer = nil
         disabledUntil = nil
         activeSecondsSinceLastReminder = 0
+        continuousSittingSeconds = 0
         snoozesUsedThisCycle = 0
         warningShownThisCycle = false
         postureNudgeShownThisCycle = false
+        firmHealthWarningShown = false
+        urgentHealthWarningShown = false
+        lastUrgentWarningAt = 0
         breakCyclesToday = 0
         start()
         onDisableStateChanged?(false, nil)
@@ -185,9 +218,13 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
     func resetSession() {
         activeSecondsSinceLastReminder = 0
         totalActiveSeconds = 0
+        continuousSittingSeconds = 0
         snoozesUsedThisCycle = 0
         warningShownThisCycle = false
         postureNudgeShownThisCycle = false
+        firmHealthWarningShown = false
+        urgentHealthWarningShown = false
+        lastUrgentWarningAt = 0
         breakCyclesToday = 0
         breakInProgress = false
         stats.resetSession()
@@ -197,7 +234,16 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
     func breakDidStart() { breakInProgress = true }
 
     /// Call when a stretch overlay is dismissed.
-    func breakDidEnd() { breakInProgress = false }
+    /// - Parameter completed: true if the user completed the full stretch, false if skipped.
+    func breakDidEnd(completed: Bool) {
+        breakInProgress = false
+        if completed {
+            continuousSittingSeconds = 0
+            firmHealthWarningShown = false
+            urgentHealthWarningShown = false
+            lastUrgentWarningAt = 0
+        }
+    }
 
     /// Manually trigger a break right now (e.g., user feels stiffness).
     func triggerBreakNow() {
@@ -293,6 +339,19 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
             totalActiveSeconds += pollInterval
         }
 
+        // Track continuous sitting — counts meeting time too since the user is
+        // still seated.  Only resets when a break is completed or user goes idle.
+        if (active || inMeeting) && !breakInProgress {
+            continuousSittingSeconds += pollInterval
+            stats.updateLongestContinuousSitting(continuousSittingSeconds)
+        } else if !active && !inMeeting && continuousSittingSeconds > 0 {
+            // User went idle outside a meeting — likely stood up
+            continuousSittingSeconds = 0
+            firmHealthWarningShown = false
+            urgentHealthWarningShown = false
+            lastUrgentWarningAt = 0
+        }
+
         onTick?(totalActiveSeconds, activeSecondsSinceLastReminder, active, inMeeting)
 
         let thresholdSeconds = TimeInterval(reminderIntervalMinutes) * 60
@@ -312,6 +371,33 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
             DispatchQueue.main.async { [weak self] in
                 guard let self else { return }
                 self.onWarning?(Int(timeUntilBreak), self.canSnooze)
+            }
+        }
+
+        // Health warnings for prolonged continuous sitting (suppress during meetings)
+        if !inMeeting && !breakInProgress {
+            let continuousMinutes = Int(continuousSittingSeconds) / 60
+            if continuousSittingSeconds >= Self.urgentWarningThreshold {
+                if !urgentHealthWarningShown {
+                    urgentHealthWarningShown = true
+                    lastUrgentWarningAt = continuousSittingSeconds
+                    stats.recordHealthWarning()
+                    DispatchQueue.main.async { [weak self] in
+                        self?.onHealthWarning?(continuousMinutes, true)
+                    }
+                } else if continuousSittingSeconds - lastUrgentWarningAt >= Self.urgentRepeatInterval {
+                    lastUrgentWarningAt = continuousSittingSeconds
+                    stats.recordHealthWarning()
+                    DispatchQueue.main.async { [weak self] in
+                        self?.onHealthWarning?(continuousMinutes, true)
+                    }
+                }
+            } else if continuousSittingSeconds >= Self.firmWarningThreshold && !firmHealthWarningShown {
+                firmHealthWarningShown = true
+                stats.recordHealthWarning()
+                DispatchQueue.main.async { [weak self] in
+                    self?.onHealthWarning?(continuousMinutes, false)
+                }
             }
         }
 
