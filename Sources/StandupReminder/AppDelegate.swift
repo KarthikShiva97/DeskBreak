@@ -242,16 +242,40 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - Health Warning Notifications
 
+    /// Rotating urgent messages — each highlights a different science-backed risk
+    /// so repeated 10-minute alerts don't become wallpaper.
+    private static let urgentWarnings: [(title: String, body: String)] = [
+        (
+            title: "Spinal Disc Damage Risk",
+            body: "Your spinal discs have no blood supply. They depend on movement to pump in nutrients and flush waste. %d minutes of static compression is slowly starving them — this is exactly how herniated discs and chronic, irreversible back pain develop."
+        ),
+        (
+            title: "Blood Clot Risk — DVT Warning",
+            body: "%d minutes without standing. Blood is pooling in your legs right now, and clot risk is climbing. A deep vein thrombosis can break loose, travel to your lungs, and kill you. This is not hypothetical — DVT kills over 100,000 Americans yearly. Walk for 2 minutes."
+        ),
+        (
+            title: "Metabolic Shutdown in Progress",
+            body: "After 90 minutes of sitting, fat-breaking enzyme activity drops by 90%%. Electrical activity in your leg muscles is near zero. Calorie burn has flatlined to 1 per minute. You are in a metabolic state linked to type 2 diabetes and heart disease. Stand up now."
+        ),
+        (
+            title: "You Are Shortening Your Life",
+            body: "A study of over 1 million adults found that sitting this long without a break carries mortality risk comparable to smoking. Each unbroken hour of sitting costs roughly 22 minutes of life expectancy. You've been seated for %d minutes. The damage is compounding right now."
+        ),
+    ]
+
     private func showHealthWarning(continuousMinutes: Int, isUrgent: Bool) {
         let content = UNMutableNotificationContent()
 
         if isUrgent {
-            content.title = "Prolonged Sitting Alert"
-            content.body = "You've been sitting for \(continuousMinutes) minutes straight without completing a break. Prolonged sitting increases risk of back pain, poor circulation, and spinal disc compression. Please stand up and move now."
+            // Rotate through urgent messages based on how long they've been sitting
+            let index = ((continuousMinutes - 90) / 10) % Self.urgentWarnings.count
+            let warning = Self.urgentWarnings[max(0, index)]
+            content.title = warning.title
+            content.body = String(format: warning.body, continuousMinutes, continuousMinutes)
             content.sound = UNNotificationSound.default
         } else {
-            content.title = "Health Warning"
-            content.body = "You've been sitting continuously for \(continuousMinutes) minutes without completing a break. Take a moment to stand up and stretch — your spine will thank you."
+            content.title = "\(continuousMinutes) Minutes Without Moving"
+            content.body = "Sitting for 1 hour straight has increased the pressure on your spinal discs by 40% and cut blood flow in your legs nearly in half. Research links each unbroken hour of sitting to a 22-minute reduction in life expectancy. Stand up — even 60 seconds reverses the damage building up right now."
             content.sound = UNNotificationSound.default
         }
 
