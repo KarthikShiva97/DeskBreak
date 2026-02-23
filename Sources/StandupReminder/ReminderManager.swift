@@ -150,6 +150,12 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
         if let savedIdle = defaults.object(forKey: "idleThresholdSeconds") as? Double, savedIdle > 0 {
             activityMonitor.idleThresholdSeconds = savedIdle
         }
+
+        // Restore today's session data from the persisted timeline so that
+        // an app relaunch (e.g. after auto-update) doesn't reset everything to 0.
+        stats.restoreFromTimeline(timeline)
+        let durations = timeline.durationByKind()
+        totalActiveSeconds = durations[.working, default: 0] + durations[.inMeeting, default: 0]
     }
 
     deinit {

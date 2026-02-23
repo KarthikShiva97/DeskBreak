@@ -72,6 +72,15 @@ final class SessionStats {
         longestContinuousSittingSeconds = 0
     }
 
+    /// Restore today's session counters from persisted timeline data so that
+    /// an app relaunch (e.g. after auto-update) doesn't reset "Breaks today" to 0.
+    func restoreFromTimeline(_ timeline: DailyTimelineStore) {
+        breaksCompleted = timeline.count(of: .breakCompleted)
+        breaksSkipped = timeline.count(of: .breakSkipped)
+        breaksSnoozed = timeline.count(of: .breakSnoozed)
+        healthWarningsReceived = timeline.count(of: .healthWarning)
+    }
+
     /// Summary string shown in the menu bar and on quit.
     func sessionSummary(totalWorkSeconds: TimeInterval) -> String {
         let hours = Int(totalWorkSeconds) / 3600
