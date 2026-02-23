@@ -40,6 +40,12 @@ final class DailyStatsStore {
         loadFromDisk()
     }
 
+    /// Testable initializer — accepts a custom file URL for isolation.
+    init(fileURL: URL) {
+        self.fileURL = fileURL
+        loadFromDisk()
+    }
+
     // MARK: - Public API
 
     /// Returns the record for a given date string ("yyyy-MM-dd"), or nil if none exists.

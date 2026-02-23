@@ -45,7 +45,7 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
     let warningLeadTimeSeconds: TimeInterval = 30
 
     /// Number of snoozes used this cycle. Max 2: first = 5min, second = 2min.
-    private var snoozesUsedThisCycle: Int = 0
+    var snoozesUsedThisCycle: Int = 0
     private static let maxSnoozesPerCycle = 2
     private static let snoozeDurations: [TimeInterval] = [5 * 60, 2 * 60]
 
@@ -56,7 +56,7 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
     private var postureNudgeShownThisCycle = false
 
     /// Number of break cycles completed today (used for adaptive break duration).
-    private var breakCyclesToday: Int = 0
+    var breakCyclesToday: Int = 0
 
     /// Timer that re-enables tracking after a timed disable.
     private var resumeTimer: Timer?

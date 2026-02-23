@@ -82,6 +82,13 @@ final class DailyTimelineStore {
         loadFromDisk()
     }
 
+    /// Testable initializer — accepts a custom file URL for isolation.
+    init(dateString: String, fileURL: URL) {
+        self.dateString = dateString
+        self.fileURL = fileURL
+        loadFromDisk()
+    }
+
     // MARK: - Recording
 
     /// Append a new event. Thread-safe for main-thread callers (all our callers are).

@@ -5,15 +5,28 @@ let package = Package(
     name: "StandupReminder",
     platforms: [.macOS(.v14)],
     targets: [
-        .executableTarget(
-            name: "StandupReminder",
-            path: "Sources/StandupReminder",
+        .target(
+            name: "StandupReminderLib",
+            path: "Sources/StandupReminderLib",
             linkerSettings: [
                 .linkedFramework("Cocoa"),
                 .linkedFramework("CoreAudio"),
                 .linkedFramework("IOKit"),
                 .linkedFramework("UserNotifications"),
             ]
+        ),
+        .executableTarget(
+            name: "StandupReminder",
+            dependencies: ["StandupReminderLib"],
+            path: "Sources/StandupReminder",
+            linkerSettings: [
+                .linkedFramework("Cocoa"),
+            ]
+        ),
+        .testTarget(
+            name: "StandupReminderTests",
+            dependencies: ["StandupReminderLib"],
+            path: "Tests/StandupReminderTests"
         ),
     ]
 )

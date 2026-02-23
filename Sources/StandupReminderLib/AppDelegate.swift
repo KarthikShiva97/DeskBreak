@@ -2,7 +2,9 @@ import Cocoa
 import SwiftUI
 import UserNotifications
 
-final class AppDelegate: NSObject, NSApplicationDelegate {
+public final class AppDelegate: NSObject, NSApplicationDelegate {
+    public override init() { super.init() }
+
     private var statusItem: NSStatusItem!
     private let reminderManager = ReminderManager()
     private var preferencesWindowController: PreferencesWindowController?
