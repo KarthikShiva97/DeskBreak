@@ -449,16 +449,22 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
         let active = activityMonitor.isUserActive()
         let inMeeting = isInMeeting()
 
-        // Record timeline transitions (idle ↔ active, meeting start/end)
-        if active && !wasActive && !breakInProgress {
-            timeline.record(.workStarted)
-        } else if !active && wasActive && !breakInProgress {
-            timeline.record(.workEnded)
-        }
+        // Record timeline transitions — meeting state takes priority over
+        // work state.  Work transitions are suppressed while a meeting is
+        // active (current or previous tick) so that idle fluctuations during
+        // a call don't produce spurious workStarted/workEnded events or
+        // cause meetingStarted to fire a second time after a brief mic drop.
         if inMeeting && !wasInMeeting {
             timeline.record(.meetingStarted)
         } else if !inMeeting && wasInMeeting {
             timeline.record(.meetingEnded)
+        }
+        if !inMeeting && !wasInMeeting && !breakInProgress {
+            if active && !wasActive {
+                timeline.record(.workStarted)
+            } else if !active && wasActive {
+                timeline.record(.workEnded)
+            }
         }
         wasActive = active
         wasInMeeting = inMeeting
