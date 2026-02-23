@@ -69,6 +69,17 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
     /// Whether a stretch break is currently in progress (don't count as work time).
     private(set) var breakInProgress = false
 
+    // MARK: - Daily Timeline
+
+    /// Today's timeline event log, persisted to disk.
+    let timeline = DailyTimelineStore()
+
+    /// Previous tick's active state — used to detect idle/active transitions.
+    private var wasActive = false
+
+    /// Previous tick's meeting state — used to detect meeting start/end transitions.
+    private var wasInMeeting = false
+
     // MARK: - Continuous Sitting Tracker
 
     /// Continuous seconds the user has been sitting without completing a break.
@@ -175,6 +186,7 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
         breakInProgress = false
         let until = Date().addingTimeInterval(TimeInterval(minutes * 60))
         disabledUntil = until
+        timeline.record(.disabled, detail: "\(minutes) min")
         onDisableStateChanged?(true, until)
 
         resumeTimer?.invalidate()
@@ -190,6 +202,7 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
         disabledUntil = .distantFuture
         resumeTimer?.invalidate()
         resumeTimer = nil
+        timeline.record(.disabled, detail: "indefinite")
         onDisableStateChanged?(true, .distantFuture)
     }
 
@@ -208,6 +221,7 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
         lastUrgentWarningAt = 0
         breakCyclesToday = 0
         start()
+        timeline.record(.resumed)
         onDisableStateChanged?(false, nil)
     }
 
@@ -228,6 +242,7 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
         breakCyclesToday = 0
         breakInProgress = false
         stats.resetSession()
+        timeline.record(.sessionReset)
     }
 
     /// Call when a stretch overlay appears.
@@ -237,6 +252,7 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
     /// - Parameter completed: true if the user completed the full stretch, false if skipped.
     func breakDidEnd(completed: Bool) {
         breakInProgress = false
+        timeline.record(completed ? .breakCompleted : .breakSkipped)
         if completed {
             continuousSittingSeconds = 0
             firmHealthWarningShown = false
@@ -270,6 +286,7 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
         snoozesUsedThisCycle += 1
         warningShownThisCycle = false
         stats.recordBreakSnoozed()
+        timeline.record(.breakSnoozed, detail: "\(Int(snoozeAmount / 60))m")
         activeSecondsSinceLastReminder = max(0, activeSecondsSinceLastReminder - snoozeAmount)
 
         DispatchQueue.main.async { [weak self] in
@@ -333,6 +350,20 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
         let active = activityMonitor.isUserActive()
         let inMeeting = isInMeeting()
 
+        // Record timeline transitions (idle ↔ active, meeting start/end)
+        if active && !wasActive && !breakInProgress {
+            timeline.record(.workStarted)
+        } else if !active && wasActive && !breakInProgress {
+            timeline.record(.workEnded)
+        }
+        if inMeeting && !wasInMeeting {
+            timeline.record(.meetingStarted)
+        } else if !inMeeting && wasInMeeting {
+            timeline.record(.meetingEnded)
+        }
+        wasActive = active
+        wasInMeeting = inMeeting
+
         // Meeting time counts (still sitting), but stretch break time doesn't
         if active && !breakInProgress {
             activeSecondsSinceLastReminder += pollInterval
@@ -382,12 +413,14 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
                     urgentHealthWarningShown = true
                     lastUrgentWarningAt = continuousSittingSeconds
                     stats.recordHealthWarning()
+                    timeline.record(.healthWarning, detail: "\(continuousMinutes) min (urgent)")
                     DispatchQueue.main.async { [weak self] in
                         self?.onHealthWarning?(continuousMinutes, true)
                     }
                 } else if continuousSittingSeconds - lastUrgentWarningAt >= Self.urgentRepeatInterval {
                     lastUrgentWarningAt = continuousSittingSeconds
                     stats.recordHealthWarning()
+                    timeline.record(.healthWarning, detail: "\(continuousMinutes) min (urgent)")
                     DispatchQueue.main.async { [weak self] in
                         self?.onHealthWarning?(continuousMinutes, true)
                     }
@@ -395,6 +428,7 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
             } else if continuousSittingSeconds >= Self.firmWarningThreshold && !firmHealthWarningShown {
                 firmHealthWarningShown = true
                 stats.recordHealthWarning()
+                timeline.record(.healthWarning, detail: "\(continuousMinutes) min")
                 DispatchQueue.main.async { [weak self] in
                     self?.onHealthWarning?(continuousMinutes, false)
                 }
