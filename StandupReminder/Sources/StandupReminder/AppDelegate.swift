@@ -200,7 +200,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let remainingSecs = Int(remaining) % 60
 
         if inMeeting {
-            statusMenuItem.title = "In meeting — timer paused"
+            statusMenuItem.title = "In meeting — break deferred"
         } else if isActive {
             statusMenuItem.title = "Next break: \(remainingMins)m \(remainingSecs)s"
         } else {

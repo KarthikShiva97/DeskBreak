@@ -110,7 +110,7 @@ struct PreferencesView: View {
                     Text("Snooze: 2 per break (5min, then 2min)")
                     Text("Posture nudge: silent reminder at halfway")
                     Text("Break Now: Cmd+B in the menu bar")
-                    Text("Meetings: timer pauses during video calls")
+                    Text("Meetings: break deferred until call ends")
                     Text("Adaptive breaks: duration increases the longer you sit")
                 }
                 .font(.caption)

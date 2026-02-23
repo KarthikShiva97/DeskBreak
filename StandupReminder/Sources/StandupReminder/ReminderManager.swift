@@ -271,28 +271,27 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
         let active = activityMonitor.isUserActive()
         let inMeeting = isInMeeting()
 
-        // Don't count meeting time — you're not hunched over code
-        if active && !inMeeting {
+        // Meeting time still counts — you're sitting either way
+        if active {
             activeSecondsSinceLastReminder += pollInterval
             totalActiveSeconds += pollInterval
         }
 
-        onTick?(totalActiveSeconds, activeSecondsSinceLastReminder, active && !inMeeting, inMeeting)
+        onTick?(totalActiveSeconds, activeSecondsSinceLastReminder, active, inMeeting)
 
         let thresholdSeconds = TimeInterval(reminderIntervalMinutes) * 60
         let timeUntilBreak = thresholdSeconds - activeSecondsSinceLastReminder
 
-        // Posture micro-nudge at the halfway point
-        let halfwayPoint = thresholdSeconds / 2
-        if !postureNudgeShownThisCycle && activeSecondsSinceLastReminder >= halfwayPoint && timeUntilBreak > warningLeadTimeSeconds {
+        // Posture micro-nudge at the halfway point (suppress during meetings)
+        if !postureNudgeShownThisCycle && !inMeeting && activeSecondsSinceLastReminder >= (thresholdSeconds / 2) && timeUntilBreak > warningLeadTimeSeconds {
             postureNudgeShownThisCycle = true
             DispatchQueue.main.async { [weak self] in
                 self?.onPostureNudge?()
             }
         }
 
-        // Show warning banner before the break
-        if blockingModeEnabled && !warningShownThisCycle && timeUntilBreak <= warningLeadTimeSeconds && timeUntilBreak > 0 {
+        // Show warning banner before the break (suppress during meetings)
+        if blockingModeEnabled && !warningShownThisCycle && !inMeeting && timeUntilBreak <= warningLeadTimeSeconds && timeUntilBreak > 0 {
             warningShownThisCycle = true
             DispatchQueue.main.async { [weak self] in
                 guard let self else { return }
@@ -301,6 +300,10 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
         }
 
         if activeSecondsSinceLastReminder >= thresholdSeconds {
+            if inMeeting {
+                // Defer — don't reset the timer, fire as soon as meeting ends
+                return
+            }
             fireReminder()
             activeSecondsSinceLastReminder = 0
             snoozesUsedThisCycle = 0
