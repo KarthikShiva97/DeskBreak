@@ -77,8 +77,19 @@ final class SessionStats {
         longestContinuousSittingSeconds = 0
     }
 
-    /// Restore today's session counters from persisted timeline data so that
-    /// an app relaunch (e.g. after auto-update) doesn't reset "Breaks today" to 0.
+    /// Restore today's session counters from the persisted daily stats store.
+    /// This is the preferred path since DailyStatsStore is the canonical
+    /// aggregated source and also tracks totalWorkSeconds.
+    func restoreFromDailyStats(_ record: DailyStatsRecord) {
+        breaksCompleted = record.breaksCompleted
+        breaksSkipped = record.breaksSkipped
+        breaksSnoozed = record.breaksSnoozed
+        healthWarningsReceived = record.healthWarningsReceived
+        longestContinuousSittingSeconds = record.longestContinuousSittingSeconds
+    }
+
+    /// Restore today's session counters from persisted timeline data.
+    /// Used as a fallback for users upgrading from before DailyStatsStore existed.
     func restoreFromTimeline(_ timeline: DailyTimelineStore) {
         breaksCompleted = timeline.count(of: .breakCompleted)
         breaksSkipped = timeline.count(of: .breakSkipped)

@@ -158,11 +158,27 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
             activityMonitor.idleThresholdSeconds = savedIdle
         }
 
-        // Restore today's session data from the persisted timeline so that
-        // an app relaunch (e.g. after auto-update) doesn't reset everything to 0.
-        stats.restoreFromTimeline(timeline)
-        let durations = timeline.durationByKind()
-        totalActiveSeconds = durations[.working, default: 0] + durations[.inMeeting, default: 0]
+        // Restore today's session data so that an app relaunch (e.g. after
+        // auto-update) doesn't reset everything to 0.
+        // Prefer DailyStatsStore (canonical aggregated source); fall back to
+        // the timeline for users upgrading from before DailyStatsStore existed.
+        let dailyRecord = DailyStatsStore.shared.todayRecord()
+        if dailyRecord.breaksCompleted > 0 || dailyRecord.totalWorkSeconds > 0 {
+            stats.restoreFromDailyStats(dailyRecord)
+            totalActiveSeconds = dailyRecord.totalWorkSeconds
+        } else if !timeline.events.isEmpty {
+            stats.restoreFromTimeline(timeline)
+            let durations = timeline.durationByKind()
+            totalActiveSeconds = durations[.working, default: 0] + durations[.inMeeting, default: 0]
+            // Seed DailyStatsStore so the two stores stay in sync going forward.
+            DailyStatsStore.shared.seedToday(
+                breaksCompleted: stats.breaksCompleted,
+                breaksSkipped: stats.breaksSkipped,
+                breaksSnoozed: stats.breaksSnoozed,
+                healthWarnings: stats.healthWarningsReceived,
+                totalWorkSeconds: totalActiveSeconds
+            )
+        }
     }
 
     deinit {
