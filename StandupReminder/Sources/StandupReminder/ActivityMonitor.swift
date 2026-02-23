@@ -31,10 +31,23 @@ final class ActivityMonitor {
         ) == KERN_SUCCESS else { return 0 }
 
         guard let dict = unmanagedDict?.takeRetainedValue() as? [String: Any],
-              let idleNanoseconds = dict["HIDIdleTime"] as? Int64
+              let idleValue = dict["HIDIdleTime"]
         else { return 0 }
 
-        return TimeInterval(idleNanoseconds) / 1_000_000_000
+        // IOKit may bridge HIDIdleTime as Int64, UInt64, or NSNumber depending
+        // on macOS version. Handle all cases to avoid silent idle detection failure.
+        let nanoseconds: Int64
+        if let val = idleValue as? Int64 {
+            nanoseconds = val
+        } else if let val = idleValue as? UInt64 {
+            nanoseconds = Int64(clamping: val)
+        } else if let num = idleValue as? NSNumber {
+            nanoseconds = num.int64Value
+        } else {
+            return 0
+        }
+
+        return TimeInterval(nanoseconds) / 1_000_000_000
     }
 
     /// Returns `true` if the user is currently active (idle time below threshold).

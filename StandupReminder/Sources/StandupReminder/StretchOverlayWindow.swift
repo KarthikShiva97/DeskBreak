@@ -246,16 +246,21 @@ struct StretchOverlayView: View {
 
 final class StretchOverlayWindowController {
     private var windows: [NSWindow] = []
+    private var generation: Int = 0
 
     func show(stretchDurationSeconds: Int, onComplete: @escaping (_ wasSkipped: Bool) -> Void) {
         dismiss()
 
+        generation += 1
+        let expectedGeneration = generation
         var completeCalled = false
         let safeComplete: (_ wasSkipped: Bool) -> Void = { skipped in
             guard !completeCalled else { return }
             completeCalled = true
             DispatchQueue.main.async { [weak self] in
-                self?.animateDismiss {
+                // If show() was called again, this closure belongs to the old overlay — bail
+                guard let self, self.generation == expectedGeneration else { return }
+                self.animateDismiss {
                     onComplete(skipped)
                 }
             }

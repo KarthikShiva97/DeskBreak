@@ -46,6 +46,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         reminderManager.onStretchBreak = { [weak self] durationSeconds in
             self?.stretchOverlay.show(stretchDurationSeconds: durationSeconds) { [weak self] wasSkipped in
+                self?.reminderManager.breakDidEnd()
                 if wasSkipped {
                     self?.reminderManager.stats.recordBreakSkipped()
                 } else {
@@ -104,7 +105,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         breaksMenuItem.isEnabled = false
         menu.addItem(breaksMenuItem)
 
-        streakMenuItem = NSMenuItem(title: "Streak: \(reminderManager.stats.dailyStreak) day(s)", action: nil, keyEquivalent: "")
+        let streak = reminderManager.stats.dailyStreak
+        streakMenuItem = NSMenuItem(title: "Streak: \(streak) day\(streak == 1 ? "" : "s")", action: nil, keyEquivalent: "")
         streakMenuItem.isEnabled = false
         menu.addItem(streakMenuItem)
 
@@ -256,13 +258,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let summary = stats.sessionSummary(totalWorkSeconds: reminderManager.totalActiveSeconds)
 
-        let alert = NSAlert()
-        alert.messageText = "Session Complete"
-        alert.informativeText = summary
-        alert.alertStyle = .informational
-        alert.addButton(withTitle: "OK")
-        alert.icon = NSImage(systemSymbolName: "figure.stand", accessibilityDescription: nil)
-        alert.runModal()
+        // Use a system notification instead of runModal() — a modal dialog during
+        // applicationWillTerminate blocks the process and hangs during system shutdown.
+        let content = UNMutableNotificationContent()
+        content.title = "Session Complete"
+        content.body = summary
+        content.sound = nil
+
+        let request = UNNotificationRequest(
+            identifier: "session-summary",
+            content: content,
+            trigger: nil
+        )
+        UNUserNotificationCenter.current().add(request)
     }
 
     // MARK: - Actions
@@ -271,11 +279,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         reminderManager.triggerBreakNow()
     }
 
-    @objc private func disable15min() { reminderManager.disableFor(minutes: 15) }
-    @objc private func disable30min() { reminderManager.disableFor(minutes: 30) }
-    @objc private func disable1hr() { reminderManager.disableFor(minutes: 60) }
-    @objc private func disable2hr() { reminderManager.disableFor(minutes: 120) }
-    @objc private func disableIndefinitely() { reminderManager.disableIndefinitely() }
+    @objc private func disable15min() { warningBanner.dismiss(); reminderManager.disableFor(minutes: 15) }
+    @objc private func disable30min() { warningBanner.dismiss(); reminderManager.disableFor(minutes: 30) }
+    @objc private func disable1hr() { warningBanner.dismiss(); reminderManager.disableFor(minutes: 60) }
+    @objc private func disable2hr() { warningBanner.dismiss(); reminderManager.disableFor(minutes: 120) }
+    @objc private func disableIndefinitely() { warningBanner.dismiss(); reminderManager.disableIndefinitely() }
 
     @objc private func resumeTracking() {
         reminderManager.resumeFromDisable()
@@ -305,6 +313,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func resetSession() {
+        warningBanner.dismiss()
         reminderManager.resetSession()
         statusItem.button?.title = " 0m"
         timerMenuItem.title = "Working: 0m"

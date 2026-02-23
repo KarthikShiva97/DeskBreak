@@ -66,6 +66,9 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
     /// Whether notification permission has already been requested this session.
     private var notificationPermissionRequested = false
 
+    /// Whether a stretch break is currently in progress (don't count as work time).
+    private(set) var breakInProgress = false
+
     // MARK: - Callbacks
 
     /// Callback when timed disable starts/ends so the UI can update.
@@ -140,6 +143,7 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
     /// Disable tracking for a fixed duration, then auto-resume.
     func disableFor(minutes: Int) {
         stop()
+        breakInProgress = false
         let until = Date().addingTimeInterval(TimeInterval(minutes * 60))
         disabledUntil = until
         onDisableStateChanged?(true, until)
@@ -153,6 +157,7 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
     /// Disable tracking indefinitely until manually resumed.
     func disableIndefinitely() {
         stop()
+        breakInProgress = false
         disabledUntil = .distantFuture
         resumeTimer?.invalidate()
         resumeTimer = nil
@@ -184,8 +189,15 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
         warningShownThisCycle = false
         postureNudgeShownThisCycle = false
         breakCyclesToday = 0
+        breakInProgress = false
         stats.resetSession()
     }
+
+    /// Call when a stretch overlay appears.
+    func breakDidStart() { breakInProgress = true }
+
+    /// Call when a stretch overlay is dismissed.
+    func breakDidEnd() { breakInProgress = false }
 
     /// Manually trigger a break right now (e.g., user feels stiffness).
     func triggerBreakNow() {
@@ -199,6 +211,7 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
             guard let self else { return }
             self.onDismissWarning?()
             if self.blockingModeEnabled {
+                self.breakInProgress = true
                 self.onStretchBreak?(self.adaptiveBreakDuration)
             }
         }
@@ -274,8 +287,8 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
         let active = activityMonitor.isUserActive()
         let inMeeting = isInMeeting()
 
-        // Meeting time still counts — you're sitting either way
-        if active {
+        // Meeting time counts (still sitting), but stretch break time doesn't
+        if active && !breakInProgress {
             activeSecondsSinceLastReminder += pollInterval
             totalActiveSeconds += pollInterval
         }
@@ -355,6 +368,7 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
             guard let self else { return }
             self.onDismissWarning?()
             if self.blockingModeEnabled {
+                self.breakInProgress = true
                 self.onStretchBreak?(duration)
             }
         }
