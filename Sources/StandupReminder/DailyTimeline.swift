@@ -7,6 +7,7 @@ import Foundation
 enum TimelineEventKind: String, Codable {
     case workStarted        // User became active after idle / app launch
     case workEnded          // User went idle (past idle threshold)
+    case breakStarted       // Stretch break overlay appeared
     case breakCompleted     // Stretch break finished (full duration)
     case breakSkipped       // Stretch break dismissed early
     case breakSnoozed       // User snoozed upcoming break
@@ -223,6 +224,7 @@ final class DailyTimelineStore {
         switch eventKind {
         case .workStarted:      return .working
         case .workEnded:        return .idle
+        case .breakStarted:     return .onBreak
         case .breakCompleted:   return .working  // break ended, back to work
         case .breakSkipped:     return .working
         case .meetingStarted:   return .inMeeting
