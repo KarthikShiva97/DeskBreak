@@ -16,6 +16,7 @@
     <string>StandupReminder</string>
     <key>LSUIElement</key>
     <true/>
-
+    <key>NSCameraUsageDescription</key>
+    <string>StandupReminder uses the camera to detect your posture and remind you to sit up straight. No images are stored or transmitted. You can disable this in Preferences.</string>
 </dict>
 </plist>

@@ -5,6 +5,7 @@ import UserNotifications
 /// Tracks cumulative work time and fires standup reminder notifications.
 final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
     private let activityMonitor = ActivityMonitor()
+    let postureMonitor = PostureMonitor()
     private var pollTimer: Timer?
 
     /// Cumulative seconds the user has been actively working since last reminder.
@@ -109,6 +110,14 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
         if let savedIdle = defaults.object(forKey: "idleThresholdSeconds") as? Double, savedIdle > 0 {
             activityMonitor.idleThresholdSeconds = savedIdle
         }
+
+        // Restore posture detection settings
+        let postureEnabled = defaults.object(forKey: "postureDetectionEnabled") as? Bool ?? false
+        let postureSens = defaults.object(forKey: "postureSensitivity") as? Double ?? 0.15
+        postureMonitor.sensitivity = postureSens
+        if postureEnabled {
+            postureMonitor.start()
+        }
     }
 
     deinit {
@@ -133,11 +142,17 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
         pollTimer = Timer.scheduledTimer(withTimeInterval: pollInterval, repeats: true) { [weak self] _ in
             self?.tick()
         }
+
+        // Camera-based posture detection fires the same nudge callback
+        postureMonitor.onBadPostureDetected = { [weak self] in
+            self?.onPostureNudge?()
+        }
     }
 
     func stop() {
         pollTimer?.invalidate()
         pollTimer = nil
+        postureMonitor.stop()
     }
 
     /// Disable tracking for a fixed duration, then auto-resume.
@@ -247,6 +262,26 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
     var adaptiveBreakDuration: Int {
         let cap = max(stretchDurationSeconds, 120)
         return min(stretchDurationSeconds + breakCyclesToday * 15, cap)
+    }
+
+    // MARK: - Posture Detection Settings
+
+    func updatePostureDetection(enabled: Bool, sensitivity: Double) {
+        postureMonitor.sensitivity = sensitivity
+        UserDefaults.standard.set(enabled, forKey: "postureDetectionEnabled")
+        UserDefaults.standard.set(sensitivity, forKey: "postureSensitivity")
+
+        if enabled {
+            if !postureMonitor.isRunning {
+                postureMonitor.start()
+            }
+        } else {
+            postureMonitor.stop()
+        }
+    }
+
+    func recalibratePosture() {
+        postureMonitor.recalibrate()
     }
 
     // MARK: - Meeting Detection

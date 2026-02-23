@@ -12,6 +12,9 @@ let package = Package(
                 .linkedFramework("Cocoa"),
                 .linkedFramework("IOKit"),
                 .linkedFramework("UserNotifications"),
+                .linkedFramework("AVFoundation"),
+                .linkedFramework("Vision"),
+                .linkedFramework("CoreMedia"),
             ]
         ),
     ]

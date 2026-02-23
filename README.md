@@ -19,6 +19,7 @@ Sitting for hours wrecks your back. This app lives in your menu bar, tracks how 
 - **Warning banner** — 30-second heads-up before a break starts
 - **Snooze** — up to 2 snoozes per cycle (5 min, then 2 min)
 - **Posture nudge** — gentle mid-cycle reminder to check your posture
+- **Camera posture detection** — optional Vision-powered slouch detection using your Mac's camera (no images stored)
 - **Meeting detection** — defers breaks during Zoom, Teams, WebEx, FaceTime, screen sharing
 - **Adaptive breaks** — break duration increases the longer you sit without moving
 - **Daily streak tracking** — tracks consecutive days of completed breaks
@@ -68,10 +69,22 @@ swift build -c release
 1. The app polls system idle time every 5 seconds via `IOKit`
 2. If idle time is below the threshold (default: 2 min), you're considered "active" and the work timer increments
 3. At the halfway point, you get a gentle posture nudge
-4. 30 seconds before the break, a warning banner appears (with snooze option)
-5. When the timer hits the interval (default: 25 min), a full-screen stretch overlay blocks your screen
-6. The overlay shows a guided stretch exercise, rotating every 20 seconds
-7. After the stretch, the timer resets for the next cycle
+4. If camera posture detection is enabled, it captures a single frame every 30 seconds and uses Apple's Vision framework to detect body landmarks (ears, shoulders, nose) — if you're slouching, you get a nudge
+5. 30 seconds before the break, a warning banner appears (with snooze option)
+6. When the timer hits the interval (default: 25 min), a full-screen stretch overlay blocks your screen
+7. The overlay shows a guided stretch exercise, rotating every 20 seconds
+8. After the stretch, the timer resets for the next cycle
+
+### Posture Detection (Optional)
+
+Enable in **Preferences > Posture Detection**. On first enable:
+
+1. macOS will ask for camera permission — grant it
+2. Sit up straight in your normal good posture
+3. The app calibrates from the first few frames (automatic)
+4. If you want to recalibrate later, click "Recalibrate Posture" in Preferences
+
+The camera captures **one frame every 30 seconds** (not continuous video). No images are stored or sent anywhere. The analysis runs entirely on-device using Apple's Vision framework.
 
 ## Menu Bar Controls
 
@@ -92,6 +105,8 @@ swift build -c release
 | Idle threshold | 1, 2, 3, 5, 10 min | 2 min |
 | Blocking mode | On / Off | On |
 | Stretch duration | 30s, 1m, 2m, 3m, 5m | 1 min |
+| Posture detection | On / Off | Off |
+| Posture sensitivity | Low / Medium / High | Medium |
 | Launch at login | On / Off | Off |
 
 ## Uninstall
@@ -112,6 +127,7 @@ Sources/StandupReminder/
 ├── AppDelegate.swift          # Menu bar UI, status item, actions
 ├── ActivityMonitor.swift      # IOKit idle time detection
 ├── ReminderManager.swift      # Work timer, break scheduling, meeting detection
+├── PostureMonitor.swift        # Camera + Vision body pose slouch detection
 ├── PreferencesWindow.swift    # SwiftUI preferences UI
 ├── SessionStats.swift         # Break stats and daily streak tracking
 ├── StretchOverlayWindow.swift # Full-screen blocking stretch overlay

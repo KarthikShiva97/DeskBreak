@@ -323,12 +323,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func openPreferences() {
         if preferencesWindowController == nil {
-            preferencesWindowController = PreferencesWindowController { [weak self] interval, idle, blocking, stretchDuration in
-                self?.reminderManager.reminderIntervalMinutes = interval
-                self?.reminderManager.idleThresholdSeconds = idle
-                self?.reminderManager.blockingModeEnabled = blocking
-                self?.reminderManager.stretchDurationSeconds = stretchDuration
-            }
+            preferencesWindowController = PreferencesWindowController(
+                onSettingsChanged: { [weak self] interval, idle, blocking, stretchDuration in
+                    self?.reminderManager.reminderIntervalMinutes = interval
+                    self?.reminderManager.idleThresholdSeconds = idle
+                    self?.reminderManager.blockingModeEnabled = blocking
+                    self?.reminderManager.stretchDurationSeconds = stretchDuration
+                },
+                onPostureSettingsChanged: { [weak self] enabled, sensitivity in
+                    self?.reminderManager.updatePostureDetection(enabled: enabled, sensitivity: sensitivity)
+                },
+                onRecalibratePosture: { [weak self] in
+                    self?.reminderManager.recalibratePosture()
+                }
+            )
         }
         preferencesWindowController?.showWindow()
     }
