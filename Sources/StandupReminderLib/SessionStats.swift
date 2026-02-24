@@ -162,6 +162,7 @@ final class SessionStats {
         let f = DateFormatter()
         f.dateFormat = "yyyy-MM-dd"
         f.locale = Locale(identifier: "en_US_POSIX")
+        f.timeZone = .current
         return f
     }()
 
