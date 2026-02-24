@@ -1,4 +1,5 @@
 import Cocoa
+import StandupReminderLib
 
 // Create the application and set up the delegate.
 // LSUIElement=true in Info.plist keeps us out of the Dock.

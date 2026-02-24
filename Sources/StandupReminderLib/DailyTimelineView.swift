@@ -145,10 +145,20 @@ struct DailyTimelineView: View {
 
     // MARK: - Helpers
 
-    private var formattedDate: String {
+    private static let fullDateFormatter: DateFormatter = {
         let f = DateFormatter()
         f.dateStyle = .full
-        return f.string(from: Date())
+        return f
+    }()
+
+    private static let timeLabelFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "h:mm a"
+        return f
+    }()
+
+    private var formattedDate: String {
+        Self.fullDateFormatter.string(from: Date())
     }
 
     private func formatDuration(_ seconds: TimeInterval) -> String {
@@ -162,9 +172,7 @@ struct DailyTimelineView: View {
     }
 
     private func timeLabel(_ date: Date) -> String {
-        let f = DateFormatter()
-        f.dateFormat = "h:mm a"
-        return f.string(from: date)
+        Self.timeLabelFormatter.string(from: date)
     }
 }
 
@@ -308,6 +316,7 @@ private struct EventRow: View {
         switch event.kind {
         case .workStarted:    return "play.circle"
         case .workEnded:      return "pause.circle"
+        case .breakStarted:   return "figure.stand"
         case .breakCompleted: return "checkmark.circle"
         case .breakSkipped:   return "forward.end"
         case .breakSnoozed:   return "clock.badge.questionmark"
@@ -324,6 +333,7 @@ private struct EventRow: View {
         switch event.kind {
         case .workStarted:    return .blue
         case .workEnded:      return .gray
+        case .breakStarted:   return .green
         case .breakCompleted: return .green
         case .breakSkipped:   return .orange
         case .breakSnoozed:   return .yellow
@@ -340,6 +350,7 @@ private struct EventRow: View {
         switch event.kind {
         case .workStarted:    return "Started working"
         case .workEnded:      return "Went idle"
+        case .breakStarted:   return "Break started"
         case .breakCompleted: return "Break completed"
         case .breakSkipped:   return "Break skipped"
         case .breakSnoozed:   return "Break snoozed"
@@ -352,10 +363,14 @@ private struct EventRow: View {
         }
     }
 
-    private var timeString: String {
+    private static let timeFormatter: DateFormatter = {
         let f = DateFormatter()
         f.dateFormat = "h:mm:ss a"
-        return f.string(from: event.timestamp)
+        return f
+    }()
+
+    private var timeString: String {
+        Self.timeFormatter.string(from: event.timestamp)
     }
 }
 
