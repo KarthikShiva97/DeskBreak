@@ -1,35 +1,35 @@
 import Foundation
 
 /// Tracks stretch break statistics for the current session and persists daily streaks.
-final class SessionStats {
+public final class SessionStats {
     let defaults: UserDefaults
 
     /// Breaks completed in this session.
-    private(set) var breaksCompleted: Int = 0
+    public private(set) var breaksCompleted: Int = 0
 
     /// Breaks skipped (user hit skip early) in this session.
-    private(set) var breaksSkipped: Int = 0
+    public private(set) var breaksSkipped: Int = 0
 
     /// Breaks snoozed in this session.
-    private(set) var breaksSnoozed: Int = 0
+    public private(set) var breaksSnoozed: Int = 0
 
     /// Health warnings received this session.
-    private(set) var healthWarningsReceived: Int = 0
+    public private(set) var healthWarningsReceived: Int = 0
 
     /// Longest continuous sitting streak (seconds) this session.
-    private(set) var longestContinuousSittingSeconds: TimeInterval = 0
+    public private(set) var longestContinuousSittingSeconds: TimeInterval = 0
 
     /// Consecutive days with at least one completed break.
-    var dailyStreak: Int {
+    public var dailyStreak: Int {
         defaults.integer(forKey: "dailyStreak")
     }
 
     /// Total breaks completed all-time.
-    var totalBreaksAllTime: Int {
+    public var totalBreaksAllTime: Int {
         defaults.integer(forKey: "totalBreaksAllTime")
     }
 
-    init(defaults: UserDefaults = .standard) {
+    public init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         // Only check if the streak was broken (don't increment — that happens on break completion)
         let today = Self.todayString()
@@ -41,36 +41,36 @@ final class SessionStats {
         }
     }
 
-    func recordBreakCompleted() {
+    public func recordBreakCompleted() {
         breaksCompleted += 1
         defaults.set(totalBreaksAllTime + 1, forKey: "totalBreaksAllTime")
         markTodayActive()
         DailyStatsStore.shared.recordBreakCompleted()
     }
 
-    func recordBreakSkipped() {
+    public func recordBreakSkipped() {
         breaksSkipped += 1
         DailyStatsStore.shared.recordBreakSkipped()
     }
 
-    func recordBreakSnoozed() {
+    public func recordBreakSnoozed() {
         breaksSnoozed += 1
         DailyStatsStore.shared.recordBreakSnoozed()
     }
 
-    func recordHealthWarning() {
+    public func recordHealthWarning() {
         healthWarningsReceived += 1
         DailyStatsStore.shared.recordHealthWarning()
     }
 
-    func updateLongestContinuousSitting(_ seconds: TimeInterval) {
+    public func updateLongestContinuousSitting(_ seconds: TimeInterval) {
         if seconds > longestContinuousSittingSeconds {
             longestContinuousSittingSeconds = seconds
         }
         DailyStatsStore.shared.updateLongestContinuousSitting(seconds)
     }
 
-    func resetSession() {
+    public func resetSession() {
         breaksCompleted = 0
         breaksSkipped = 0
         breaksSnoozed = 0
@@ -79,9 +79,7 @@ final class SessionStats {
     }
 
     /// Restore today's session counters from the persisted daily stats store.
-    /// This is the preferred path since DailyStatsStore is the canonical
-    /// aggregated source and also tracks totalWorkSeconds.
-    func restoreFromDailyStats(_ record: DailyStatsRecord) {
+    public func restoreFromDailyStats(_ record: DailyStatsRecord) {
         breaksCompleted = record.breaksCompleted
         breaksSkipped = record.breaksSkipped
         breaksSnoozed = record.breaksSnoozed
@@ -90,8 +88,7 @@ final class SessionStats {
     }
 
     /// Restore today's session counters from persisted timeline data.
-    /// Used as a fallback for users upgrading from before DailyStatsStore existed.
-    func restoreFromTimeline(_ timeline: DailyTimelineStore) {
+    public func restoreFromTimeline(_ timeline: DailyTimelineStore) {
         breaksCompleted = timeline.count(of: .breakCompleted)
         breaksSkipped = timeline.count(of: .breakSkipped)
         breaksSnoozed = timeline.count(of: .breakSnoozed)
@@ -99,7 +96,7 @@ final class SessionStats {
     }
 
     /// Summary string shown in the menu bar and on quit.
-    func sessionSummary(totalWorkSeconds: TimeInterval) -> String {
+    public func sessionSummary(totalWorkSeconds: TimeInterval) -> String {
         let hours = Int(totalWorkSeconds) / 3600
         let mins = (Int(totalWorkSeconds) % 3600) / 60
 
@@ -148,12 +145,10 @@ final class SessionStats {
         let yesterday = Self.yesterdayString()
 
         if lastActive == today {
-            // Already counted today — don't double-increment
             return
         } else if lastActive == yesterday {
             defaults.set(dailyStreak + 1, forKey: "dailyStreak")
         } else {
-            // First time or streak broken — start at 1
             defaults.set(1, forKey: "dailyStreak")
         }
     }

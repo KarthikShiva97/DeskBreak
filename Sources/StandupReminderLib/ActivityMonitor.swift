@@ -3,12 +3,14 @@ import IOKit
 
 /// Monitors user activity by reading the system's HID idle time.
 /// When idle time exceeds a threshold, the user is considered "away."
-final class ActivityMonitor {
+public final class ActivityMonitor {
     /// Idle duration (seconds) before we consider the user away from the computer.
-    var idleThresholdSeconds: TimeInterval = 120 // 2 minutes default
+    public var idleThresholdSeconds: TimeInterval = 120 // 2 minutes default
+
+    public init() {}
 
     /// Returns the number of seconds the user has been idle (no mouse/keyboard input).
-    func systemIdleTime() -> TimeInterval {
+    public func systemIdleTime() -> TimeInterval {
         var iterator: io_iterator_t = 0
         let result = IOServiceGetMatchingServices(
             kIOMainPortDefault,
@@ -51,7 +53,7 @@ final class ActivityMonitor {
     }
 
     /// Returns `true` if the user is currently active (idle time below threshold).
-    func isUserActive() -> Bool {
+    public func isUserActive() -> Bool {
         return systemIdleTime() < idleThresholdSeconds
     }
 }
