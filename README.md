@@ -6,6 +6,14 @@ A lightweight macOS menu bar app that reminds you to stand up, stretch, and deco
 ![Swift 5.9](https://img.shields.io/badge/Swift-5.9-orange)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
+## Download
+
+**No terminal or developer tools required.** Download the latest DMG, open it, and drag the app to your Applications folder:
+
+[**Download DeskBreak.dmg**](https://github.com/KarthikShiva97/DeskBreak/releases/latest/download/DeskBreak.dmg)
+
+> **First launch:** macOS may show "app is from an unidentified developer." Right-click the app, choose **Open**, then click **Open** in the dialog. You only need to do this once.
+
 ## Why?
 
 Sitting for hours wrecks your back. This app lives in your menu bar, tracks how long you've been working, and forces you to take stretch breaks with guided exercises — specifically chosen for spinal disc health.
@@ -28,24 +36,33 @@ Sitting for hours wrecks your back. This app lives in your menu bar, tracks how 
 - **Dock-free** — runs as a background agent (no Dock icon)
 - **Configurable** — reminder interval (15–60 min), idle threshold, stretch duration, blocking mode
 
-## Quick Install (No Xcode Required)
+## Install from DMG (Recommended)
 
-Download and run the installer — it builds the app and copies it to your Applications folder:
+1. Download **DeskBreak.dmg** from the [latest release](https://github.com/KarthikShiva97/DeskBreak/releases/latest)
+2. Open the DMG file
+3. Drag **StandupReminder** to the **Applications** folder
+4. Open it from Applications
+
+No terminal, no developer tools, no fuss.
+
+## Install from Source
+
+If you prefer to build from source:
 
 ```bash
-git clone https://github.com/KarthikShiva97/Test.git
-cd Test
+git clone https://github.com/KarthikShiva97/DeskBreak.git
+cd DeskBreak
 ./install.sh
 ```
 
-That's it. The app will open automatically after install.
+The installer builds the app and copies it to your Applications folder.
 
 ### What You Need
 
 - A Mac running **macOS 14 (Sonoma)** or later
 - **Xcode Command Line Tools** — the installer will prompt you to install them if missing
 
-> Don't have the Command Line Tools? When prompted, click "Install" in the dialog that appears. It takes a few minutes. You do NOT need the full Xcode app.
+> Don't have the Command Line Tools? When prompted, click "Install" in the dialog that appears. You do NOT need the full Xcode app.
 
 ## Manual Build
 
