@@ -73,7 +73,12 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
     // MARK: - Daily Timeline
 
     /// Today's timeline event log, persisted to disk.
-    let timeline = DailyTimelineStore()
+    /// Replaced automatically at midnight — see `rolloverDayIfNeeded()`.
+    private(set) var timeline = DailyTimelineStore()
+
+    /// The date string (yyyy-MM-dd) the current session belongs to.
+    /// Compared each tick to detect midnight crossings.
+    private var currentDayString: String = DailyTimelineStore.todayString()
 
     /// Previous tick's active state — used to detect idle/active transitions.
     private var wasActive = false
@@ -448,9 +453,47 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
         return false
     }
 
+    // MARK: - Day Rollover
+
+    /// Detects when the calendar day has changed (midnight crossing) and
+    /// resets all per-day state so "today" stats are clean.
+    /// Called every tick (~5s) so the check is lightweight (string compare).
+    private func rolloverDayIfNeeded() {
+        let today = DailyTimelineStore.todayString()
+        guard today != currentDayString else { return }
+
+        // Flush yesterday's stats to disk before switching.
+        DailyStatsStore.shared.updateTotalWorkSeconds(totalActiveSeconds)
+        DailyStatsStore.shared.flush()
+
+        // Create a fresh timeline for the new day.
+        timeline = DailyTimelineStore()
+        currentDayString = today
+
+        // Reset session counters — the new day starts from zero.
+        totalActiveSeconds = 0
+        activeSecondsSinceLastReminder = 0
+        continuousIdleSeconds = 0
+        continuousSittingSeconds = 0
+        snoozesUsedThisCycle = 0
+        warningShownThisCycle = false
+        postureNudgeShownThisCycle = false
+        firmHealthWarningShown = false
+        urgentHealthWarningShown = false
+        lastUrgentWarningAt = 0
+        breakCyclesToday = 0
+        breakInProgress = false
+        stats.resetSession()
+
+        // Notify the UI so menu bar and stats window reflect the reset.
+        onTick?(0, 0, false, false)
+    }
+
     // MARK: - Tick
 
     private func tick() {
+        rolloverDayIfNeeded()
+
         let active = activityMonitor.isUserActive()
         let inMeeting = isInMeeting()
 
