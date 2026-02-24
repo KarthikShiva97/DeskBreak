@@ -170,12 +170,18 @@ public final class DailyTimelineStore {
 
     // MARK: - Persistence
 
-    private static let dateFormatter: DateFormatter = {
+    static let dateFormatter: DateFormatter = {
         let f = DateFormatter()
         f.dateFormat = "yyyy-MM-dd"
         f.locale = Locale(identifier: "en_US_POSIX")
+        f.timeZone = .current
         return f
     }()
+
+    /// The current calendar day as "yyyy-MM-dd" in the user's local timezone.
+    static func todayString() -> String {
+        dateFormatter.string(from: Date())
+    }
 
     private static var storageDirectory: URL {
         let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
