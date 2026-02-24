@@ -1,4 +1,3 @@
-import StandupReminderCore
 import SwiftUI
 
 // MARK: - Stats Viewer View
@@ -89,6 +88,7 @@ private struct DailyStatsView: View {
     private static let dateFormatter: DateFormatter = {
         let f = DateFormatter()
         f.dateFormat = "yyyy-MM-dd"
+        f.locale = Locale(identifier: "en_US_POSIX")
         return f
     }()
 }
@@ -167,11 +167,15 @@ private struct WeeklyStatsView: View {
         }
     }
 
-    private var weekRangeLabel: String {
+    private static let weekRangeFormatter: DateFormatter = {
         let f = DateFormatter()
         f.dateFormat = "MMM d"
-        let start = f.string(from: weekStart)
-        let end = f.string(from: weekEnd)
+        return f
+    }()
+
+    private var weekRangeLabel: String {
+        let start = Self.weekRangeFormatter.string(from: weekStart)
+        let end = Self.weekRangeFormatter.string(from: weekEnd)
         return "\(start) – \(end)"
     }
 
@@ -212,6 +216,7 @@ private struct DailyBreakdownChart: View {
     private static let dayFormatter: DateFormatter = {
         let f = DateFormatter()
         f.dateFormat = "yyyy-MM-dd"
+        f.locale = Locale(identifier: "en_US_POSIX")
         return f
     }()
 

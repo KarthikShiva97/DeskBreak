@@ -1,5 +1,5 @@
 import XCTest
-@testable import StandupReminderCore
+@testable import StandupReminderLib
 
 final class BreakCycleStateTests: XCTestCase {
 

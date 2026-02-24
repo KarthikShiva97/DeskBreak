@@ -261,10 +261,16 @@ final class AutoUpdater {
         process.standardError = stderr
 
         try process.run()
-        process.waitUntilExit()
 
+        // Read pipes BEFORE waitUntilExit to avoid deadlock: if the
+        // subprocess fills the pipe buffer (~64 KB) it blocks until
+        // someone drains the pipe, but waitUntilExit blocks until the
+        // process exits — a classic deadlock for large build output.
         let outData = stdout.fileHandleForReading.readDataToEndOfFile()
         let errData = stderr.fileHandleForReading.readDataToEndOfFile()
+
+        process.waitUntilExit()
+
         let outStr = String(data: outData, encoding: .utf8) ?? ""
         let errStr = String(data: errData, encoding: .utf8) ?? ""
 

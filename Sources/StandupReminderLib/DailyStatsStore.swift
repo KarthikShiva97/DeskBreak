@@ -32,6 +32,7 @@ public final class DailyStatsStore {
     private static let dateFormatter: DateFormatter = {
         let f = DateFormatter()
         f.dateFormat = "yyyy-MM-dd"
+        f.locale = Locale(identifier: "en_US_POSIX")
         return f
     }()
 
@@ -40,6 +41,12 @@ public final class DailyStatsStore {
         let appDir = appSupport.appendingPathComponent("StandupReminder", isDirectory: true)
         try? FileManager.default.createDirectory(at: appDir, withIntermediateDirectories: true)
         fileURL = appDir.appendingPathComponent("daily-stats.json")
+        loadFromDisk()
+    }
+
+    /// Testable initializer — accepts a custom file URL for isolation.
+    init(fileURL: URL) {
+        self.fileURL = fileURL
         loadFromDisk()
     }
 
@@ -151,12 +158,15 @@ public final class DailyStatsStore {
             mutation(&record)
             cache[today] = record
             dirty = true
+            scheduleSave()
         }
-        scheduleSave()
     }
 
+    /// Guarded by `queue` — only access from within a queue.sync/async block.
     private var saveWorkItem: DispatchWorkItem?
 
+    /// Debounce disk writes — save at most once per second.
+    /// Must be called while already on `queue`.
     private func scheduleSave() {
         saveWorkItem?.cancel()
         let item = DispatchWorkItem { [weak self] in

@@ -6,8 +6,8 @@ let package = Package(
     platforms: [.macOS(.v14)],
     targets: [
         .target(
-            name: "StandupReminderCore",
-            path: "Sources/StandupReminderCore",
+            name: "StandupReminderLib",
+            path: "Sources/StandupReminderLib",
             linkerSettings: [
                 .linkedFramework("Cocoa"),
                 .linkedFramework("CoreAudio"),
@@ -17,19 +17,16 @@ let package = Package(
         ),
         .executableTarget(
             name: "StandupReminder",
-            dependencies: ["StandupReminderCore"],
+            dependencies: ["StandupReminderLib"],
             path: "Sources/StandupReminder",
             linkerSettings: [
                 .linkedFramework("Cocoa"),
-                .linkedFramework("CoreAudio"),
-                .linkedFramework("IOKit"),
-                .linkedFramework("UserNotifications"),
             ]
         ),
         .testTarget(
-            name: "StandupReminderCoreTests",
-            dependencies: ["StandupReminderCore"],
-            path: "Tests/StandupReminderCoreTests"
+            name: "StandupReminderTests",
+            dependencies: ["StandupReminderLib"],
+            path: "Tests/StandupReminderTests"
         ),
     ]
 )

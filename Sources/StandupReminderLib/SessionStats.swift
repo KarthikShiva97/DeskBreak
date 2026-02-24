@@ -2,7 +2,7 @@ import Foundation
 
 /// Tracks stretch break statistics for the current session and persists daily streaks.
 public final class SessionStats {
-    private let defaults = UserDefaults.standard
+    let defaults: UserDefaults
 
     /// Breaks completed in this session.
     public private(set) var breaksCompleted: Int = 0
@@ -29,7 +29,8 @@ public final class SessionStats {
         defaults.integer(forKey: "totalBreaksAllTime")
     }
 
-    public init() {
+    public init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
         // Only check if the streak was broken (don't increment — that happens on break completion)
         let today = Self.todayString()
         let lastActive = defaults.string(forKey: "lastActiveDate") ?? ""
@@ -155,6 +156,7 @@ public final class SessionStats {
     private static let dateFormatter: DateFormatter = {
         let f = DateFormatter()
         f.dateFormat = "yyyy-MM-dd"
+        f.locale = Locale(identifier: "en_US_POSIX")
         return f
     }()
 

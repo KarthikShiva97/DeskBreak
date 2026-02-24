@@ -7,6 +7,7 @@ import Foundation
 public enum TimelineEventKind: String, Codable {
     case workStarted        // User became active after idle / app launch
     case workEnded          // User went idle (past idle threshold)
+    case breakStarted       // Stretch break overlay appeared
     case breakCompleted     // Stretch break finished (full duration)
     case breakSkipped       // Stretch break dismissed early
     case breakSnoozed       // User snoozed upcoming break
@@ -84,6 +85,13 @@ public final class DailyTimelineStore {
     public init(date: Date = Date()) {
         self.dateString = Self.dateFormatter.string(from: date)
         self.fileURL = Self.storageDirectory.appendingPathComponent("\(dateString).json")
+        loadFromDisk()
+    }
+
+    /// Testable initializer — accepts a custom file URL for isolation.
+    init(dateString: String, fileURL: URL) {
+        self.dateString = dateString
+        self.fileURL = fileURL
         loadFromDisk()
     }
 
@@ -224,6 +232,7 @@ public final class DailyTimelineStore {
         switch eventKind {
         case .workStarted:      return .working
         case .workEnded:        return .idle
+        case .breakStarted:     return .onBreak
         case .breakCompleted:   return .working  // break ended, back to work
         case .breakSkipped:     return .working
         case .meetingStarted:   return .inMeeting

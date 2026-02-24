@@ -74,7 +74,7 @@ public final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
     private var sitting = SittingTracker()
 
     /// Number of break cycles completed today (used for adaptive break duration).
-    private var breakCyclesToday: Int = 0
+    var breakCyclesToday: Int = 0
 
     /// Timer that re-enables tracking after a timed disable.
     private var resumeTimer: Timer?
@@ -171,10 +171,13 @@ public final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
         if dailyRecord.breaksCompleted > 0 || dailyRecord.totalWorkSeconds > 0 {
             stats.restoreFromDailyStats(dailyRecord)
             totalActiveSeconds = dailyRecord.totalWorkSeconds
+            breakCyclesToday = dailyRecord.breaksCompleted
         } else if !timeline.events.isEmpty {
             stats.restoreFromTimeline(timeline)
             let durations = timeline.durationByKind()
             totalActiveSeconds = durations[.working, default: 0] + durations[.inMeeting, default: 0]
+            breakCyclesToday = stats.breaksCompleted
+            // Seed DailyStatsStore so the two stores stay in sync going forward.
             DailyStatsStore.shared.seedToday(
                 breaksCompleted: stats.breaksCompleted,
                 breaksSkipped: stats.breaksSkipped,
@@ -271,7 +274,10 @@ public final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
     }
 
     /// Call when a stretch overlay appears.
-    public func breakDidStart() { breakInProgress = true }
+    public func breakDidStart() {
+        breakInProgress = true
+        timeline.record(.breakStarted)
+    }
 
     /// Call when a stretch overlay is dismissed.
     /// - Parameter completed: true if the user completed the full stretch, false if skipped.
@@ -292,7 +298,7 @@ public final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
             guard let self else { return }
             self.onDismissWarning?()
             if self.blockingModeEnabled {
-                self.breakInProgress = true
+                self.breakDidStart()
                 self.onStretchBreak?(self.adaptiveBreakDuration)
             }
         }
@@ -592,7 +598,7 @@ public final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
             guard let self else { return }
             self.onDismissWarning?()
             if self.blockingModeEnabled {
-                self.breakInProgress = true
+                self.breakDidStart()
                 self.onStretchBreak?(duration)
             }
         }
