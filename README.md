@@ -1,27 +1,31 @@
 <div align="center">
 
-# DeskBreak
+<img src="screenshots/hero-banner.svg" width="100%" alt="DeskBreak — Your back's best friend in the menu bar"/>
 
-### Your back's best friend in the menu bar.
-
-A lightweight macOS menu bar app that tracks your sitting time and forces you to stand up, stretch, and decompress your spine — with guided exercises backed by spinal health research.
-
-**Zero configuration. No Dock icon. Just protection for your back.**
+<br/>
 
 ![macOS 14+](https://img.shields.io/badge/macOS-14%2B-blue?style=flat-square)
 ![Swift 5.9](https://img.shields.io/badge/Swift-5.9-F05138?style=flat-square&logo=swift&logoColor=white)
 ![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)
 ![No Xcode Required](https://img.shields.io/badge/Xcode-not%20required-lightgrey?style=flat-square)
+![Zero Dependencies](https://img.shields.io/badge/dependencies-0-brightgreen?style=flat-square)
+
+**Tracks your sitting time. Blocks your screen. Guides you through spinal health exercises.**<br/>
+**Zero config. No Dock icon. No dependencies. Just your back, protected.**
+
+[Install](#install) · [Screenshots](#screenshots) · [Features](#key-features) · [Exercises](#guided-exercises) · [Contributing](#contributing)
 
 </div>
 
 ---
 
+> **"Sitting is the new smoking."** Prolonged sitting puts **up to 66% more pressure** on your spinal discs than standing (Wilke, *Spine* 1999), cuts leg blood flow in half (Thosar, *MSSE* 2015), and raises blood clot risk 20% per unbroken hour (Healy, *JRSM* 2010). Going to the gym afterwards doesn't undo it — you have to break the sitting throughout the day.
+
 ## The Problem
 
-Developers sit for 8–12 hours a day. Prolonged sitting puts **up to 66% more pressure** on your spinal discs than standing (Wilke, *Spine* 1999), cuts leg blood flow in half (Thosar, *MSSE* 2015), and raises blood clot risk 20% per unbroken hour (Healy, *JRSM* 2010). Going to the gym afterwards doesn't undo it — you have to break the sitting throughout the day.
+Developers sit for 8–12 hours a day. Most break reminders are easy to dismiss — a notification you swipe away and forget. DeskBreak is different: it **blocks your entire screen** with a guided stretch exercise. You can't ignore it (you can skip after 10 seconds, but by then you're already standing).
 
-DeskBreak sits quietly in your menu bar, tracks your active work time, and pulls you out of the chair at the right intervals with guided exercises specifically chosen for disc health.
+It sits quietly in your menu bar, tracks your active work time, detects when you're in meetings, and pulls you out of the chair at the right intervals with exercises specifically chosen for disc health and spinal decompression.
 
 ---
 
@@ -251,9 +255,28 @@ rm -rf ~/Library/Application\ Support/DeskBreak
 
 ---
 
+## Why DeskBreak?
+
+| Other break apps | DeskBreak |
+|---|---|
+| Easy-to-dismiss notifications | **Full-screen blocking overlay** you can't ignore |
+| Generic "take a break" messages | **10 guided exercises** with instructions specific to spinal disc health |
+| Manual start/stop | **Automatic activity detection** — pauses when you're away |
+| Interrupts your meetings | **Meeting detection** — defers breaks during Zoom, Teams, WebEx, FaceTime |
+| Subscription pricing | **Free and open source** (MIT) |
+| Electron/web wrapper | **Native Swift** — 0 dependencies, minimal resource usage |
+
+---
+
 ## Contributing
 
-Pull requests welcome. If you have ideas for new exercises, smarter meeting detection, or UI improvements — open an issue or submit a PR.
+Pull requests welcome! Here are some ways to help:
+
+- **New exercises** — Know a great stretch for desk workers? Add it to the exercises array
+- **Meeting detection** — Improve detection for more conferencing apps
+- **UI polish** — SwiftUI improvements to the overlay, stats, or preferences views
+- **Localization** — Help translate the app for non-English speakers
+- **Bug reports** — Open an issue if something isn't working right
 
 ---
 
