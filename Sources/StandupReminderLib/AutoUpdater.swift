@@ -33,6 +33,8 @@ final class AutoUpdater {
         }
     }
 
+    /// Tracks the last commit SHA the user has seen/dismissed so background
+    /// checks don't repeatedly nag about the same version.
     private var lastCheckedCommit: String? {
         get { UserDefaults.standard.string(forKey: AutoUpdater.lastCommitKey) }
         set { UserDefaults.standard.set(newValue, forKey: AutoUpdater.lastCommitKey) }
@@ -66,42 +68,65 @@ final class AutoUpdater {
     }
 
     /// Manually triggered "Check for Updates" (e.g. from menu item).
-    func checkForUpdates(userInitiated: Bool) {
+    /// The optional `completion` is called on the main thread when the check
+    /// finishes so the caller can restore UI state (e.g. re-enable menu items).
+    func checkForUpdates(userInitiated: Bool, completion: (() -> Void)? = nil) {
         guard !isUpdating else {
             if userInitiated {
-                showNotification(title: "Update In Progress",
-                                 body: "An update is already being installed.")
+                showAlert(title: "Update In Progress",
+                          message: "An update is already being installed.")
             }
+            completion?()
             return
         }
 
         fetchLatestCommit { [weak self] result in
-            guard let self else { return }
+            guard let self else { completion?(); return }
 
             switch result {
             case .success(let remoteCommit):
-                if self.lastCheckedCommit == nil {
-                    // First run — record the current commit as baseline.
-                    self.lastCheckedCommit = remoteCommit
-                    if userInitiated {
-                        self.showNotification(title: "Up to Date",
-                                              body: "You're running the latest version.")
-                    }
-                } else if self.lastCheckedCommit == remoteCommit {
-                    if userInitiated {
-                        self.showNotification(title: "Up to Date",
-                                              body: "You're running the latest version.")
+                let currentCommit = BuildInfo.commitHash
+                let isDev = (currentCommit == "dev")
+                let isUpToDate: Bool
+
+                if isDev {
+                    // Development build — fall back to lastCheckedCommit tracking
+                    if self.lastCheckedCommit == nil {
+                        self.lastCheckedCommit = remoteCommit
+                        isUpToDate = true
+                    } else {
+                        isUpToDate = (self.lastCheckedCommit == remoteCommit)
                     }
                 } else {
-                    self.confirmAndUpdate(toCommit: remoteCommit, userInitiated: userInitiated)
+                    isUpToDate = (currentCommit == remoteCommit)
+                }
+
+                if isUpToDate {
+                    if userInitiated {
+                        let display = isDev ? "dev" : String(currentCommit.prefix(7))
+                        self.showAlert(
+                            title: "DeskBreak Is Up to Date",
+                            message: "You're running the latest version.\n\nBuild: \(display)")
+                    }
+                    completion?()
+                } else {
+                    // For background checks, skip if the user already dismissed this version.
+                    if !userInitiated && self.lastCheckedCommit == remoteCommit {
+                        completion?()
+                        return
+                    }
+                    self.promptForUpdate(toCommit: remoteCommit, userInitiated: userInitiated, completion: completion)
                 }
 
             case .failure(let error):
                 print("[AutoUpdater] Check failed: \(error)")
                 if userInitiated {
-                    self.showNotification(title: "Update Check Failed",
-                                          body: "Could not reach GitHub: \(error.localizedDescription)")
+                    self.showAlert(
+                        title: "Update Check Failed",
+                        message: "Could not reach GitHub.\n\n\(error.localizedDescription)",
+                        style: .warning)
                 }
+                completion?()
             }
         }
     }
@@ -148,26 +173,39 @@ final class AutoUpdater {
 
     // MARK: - Update Flow
 
-    private func confirmAndUpdate(toCommit commit: String, userInitiated: Bool) {
-        if userInitiated {
-            // User explicitly asked — update immediately.
-            performUpdate(toCommit: commit)
-            return
+    /// Shows a confirmation dialog and starts the update if the user agrees.
+    private func promptForUpdate(toCommit commit: String, userInitiated: Bool, completion: (() -> Void)? = nil) {
+        let currentDisplay: String
+        if BuildInfo.commitHash == "dev" {
+            currentDisplay = "dev"
+        } else {
+            currentDisplay = String(BuildInfo.commitHash.prefix(7))
         }
+        let remoteDisplay = String(commit.prefix(7))
 
-        // Background check — show an alert to let the user decide.
         let alert = NSAlert()
         alert.messageText = "Update Available"
-        alert.informativeText = "A new version of DeskBreak is available. Would you like to update now? The app will rebuild and relaunch automatically."
+        alert.informativeText = """
+            A new version of DeskBreak is available.
+
+            Current build: \(currentDisplay)
+            Latest: \(remoteDisplay)
+
+            The app will download, rebuild, and relaunch automatically.
+            """
         alert.alertStyle = .informational
         alert.addButton(withTitle: "Update Now")
-        alert.addButton(withTitle: "Later")
+        alert.addButton(withTitle: "Not Now")
 
         NSApp.activate(ignoringOtherApps: true)
         let response = alert.runModal()
         if response == .alertFirstButtonReturn {
             performUpdate(toCommit: commit)
+        } else {
+            // Remember this version so background checks don't nag.
+            self.lastCheckedCommit = commit
         }
+        completion?()
     }
 
     private func performUpdate(toCommit commit: String) {
@@ -199,11 +237,23 @@ final class AutoUpdater {
                     tempDir.path
                 ])
 
-                // 2. Build release binary
+                // 2. Inject build metadata so the new binary knows its commit
+                let buildInfoPath = tempDir
+                    .appendingPathComponent("Sources/StandupReminderLib/BuildInfo.swift")
+                let buildInfoContent = """
+                    /// Build metadata — auto-generated during update. Do not edit.
+                    enum BuildInfo {
+                        static let commitHash = "\(commit)"
+                    }
+
+                    """
+                try buildInfoContent.write(to: buildInfoPath, atomically: true, encoding: .utf8)
+
+                // 3. Build release binary
                 try self.run("/usr/bin/swift", arguments: ["build", "-c", "release"],
                              workingDirectory: tempDir.path)
 
-                // 3. Assemble app bundle in temp dir
+                // 4. Assemble app bundle in temp dir
                 let appBundle = tempDir.appendingPathComponent("StandupReminder.app")
                 let macOS = appBundle.appendingPathComponent("Contents/MacOS")
                 try fm.createDirectory(at: macOS, withIntermediateDirectories: true)
@@ -215,20 +265,20 @@ final class AutoUpdater {
                 let plistDst = appBundle.appendingPathComponent("Contents/Info.plist")
                 try fm.copyItem(at: plistSrc, to: plistDst)
 
-                // 4. Replace the installed app
+                // 5. Replace the installed app
                 let installedApp = "/Applications/StandupReminder.app"
                 if fm.fileExists(atPath: installedApp) {
                     try fm.removeItem(atPath: installedApp)
                 }
                 try fm.copyItem(at: appBundle, to: URL(fileURLWithPath: installedApp))
 
-                // 5. Record the new commit
+                // 6. Record the new commit
                 DispatchQueue.main.async {
                     self.lastCheckedCommit = commit
                     self.showNotification(title: "Update Complete",
                                           body: "DeskBreak has been updated. Relaunching…")
 
-                    // 6. Relaunch after a short delay
+                    // 7. Relaunch after a short delay
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
                         self.relaunch()
                     }
@@ -236,8 +286,10 @@ final class AutoUpdater {
             } catch {
                 print("[AutoUpdater] Update failed: \(error)")
                 DispatchQueue.main.async {
-                    self.showNotification(title: "Update Failed",
-                                          body: error.localizedDescription)
+                    self.showAlert(
+                        title: "Update Failed",
+                        message: "The update could not be installed.\n\n\(error.localizedDescription)",
+                        style: .critical)
                 }
             }
         }
@@ -300,6 +352,20 @@ final class AutoUpdater {
         }
     }
 
+    /// Shows a modal alert dialog. Used for user-initiated checks where
+    /// the feedback must be immediately visible and impossible to miss.
+    private func showAlert(title: String, message: String, style: NSAlert.Style = .informational) {
+        let alert = NSAlert()
+        alert.messageText = title
+        alert.informativeText = message
+        alert.alertStyle = style
+        alert.addButton(withTitle: "OK")
+        NSApp.activate(ignoringOtherApps: true)
+        alert.runModal()
+    }
+
+    /// Shows a system notification. Used for background events (update progress,
+    /// completion) where a non-blocking notification is appropriate.
     private func showNotification(title: String, body: String) {
         let content = UNMutableNotificationContent()
         content.title = title

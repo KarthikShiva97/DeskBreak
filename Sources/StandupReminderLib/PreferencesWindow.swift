@@ -128,9 +128,20 @@ struct PreferencesView: View {
             } header: {
                 Label("How it works", systemImage: "questionmark.circle")
             }
+
+            Section {
+                LabeledContent("Build") {
+                    let display = BuildInfo.commitHash == "dev" ? "Development" : String(BuildInfo.commitHash.prefix(7))
+                    Text(display)
+                        .foregroundStyle(.secondary)
+                        .textSelection(.enabled)
+                }
+            } header: {
+                Label("About", systemImage: "info.circle")
+            }
         }
         .formStyle(.grouped)
-        .frame(width: 420, height: 580)
+        .frame(width: 420, height: 620)
     }
 
     private func notifyChange() {
@@ -147,7 +158,7 @@ final class PreferencesWindowController: NSWindowController {
         let window = NSWindow(contentViewController: hostingController)
         window.title = "StandupReminder Preferences"
         window.styleMask = [.titled, .closable]
-        window.setContentSize(NSSize(width: 420, height: 580))
+        window.setContentSize(NSSize(width: 420, height: 620))
         window.center()
 
         self.init(window: window)

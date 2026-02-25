@@ -19,6 +19,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
     private var breaksMenuItem: NSMenuItem!
     private var disableMenuItem: NSMenuItem!
     private var resumeMenuItem: NSMenuItem!
+    private var updateMenuItem: NSMenuItem!
 
     // MARK: - App Lifecycle
 
@@ -182,15 +183,20 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
 
         menu.addItem(.separator())
 
-        let updateItem = NSMenuItem(title: "Check for Updates…", action: #selector(checkForUpdates), keyEquivalent: "u")
-        updateItem.target = self
-        menu.addItem(updateItem)
+        updateMenuItem = NSMenuItem(title: "Check for Updates…", action: #selector(checkForUpdates), keyEquivalent: "u")
+        updateMenuItem.target = self
+        menu.addItem(updateMenuItem)
 
         let prefsItem = NSMenuItem(title: "Preferences…", action: #selector(openPreferences), keyEquivalent: ",")
         prefsItem.target = self
         menu.addItem(prefsItem)
 
         menu.addItem(.separator())
+
+        let commitDisplay = BuildInfo.commitHash == "dev" ? "dev" : String(BuildInfo.commitHash.prefix(7))
+        let versionItem = NSMenuItem(title: "DeskBreak (\(commitDisplay))", action: nil, keyEquivalent: "")
+        versionItem.isEnabled = false
+        menu.addItem(versionItem)
 
         let quitItem = NSMenuItem(title: "Quit StandupReminder", action: #selector(quitApp), keyEquivalent: "q")
         quitItem.target = self
@@ -425,7 +431,12 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func checkForUpdates() {
-        AutoUpdater.shared.checkForUpdates(userInitiated: true)
+        updateMenuItem.title = "Checking for Updates…"
+        updateMenuItem.isEnabled = false
+        AutoUpdater.shared.checkForUpdates(userInitiated: true) { [weak self] in
+            self?.updateMenuItem.title = "Check for Updates…"
+            self?.updateMenuItem.isEnabled = true
+        }
     }
 
     @objc private func openPreferences() {
