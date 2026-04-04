@@ -1,0 +1,32 @@
+name: Build and Release DMG
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-dmg:
+    runs-on: macos-14
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build app
+        run: |
+          swift build -c release
+          mkdir -p StandupReminder.app/Contents/MacOS
+          cp .build/release/StandupReminder StandupReminder.app/Contents/MacOS/
+          cp Resources/Info.plist StandupReminder.app/Contents/
+
+      - name: Create DMG
+        run: ./create-dmg.sh
+
+      - name: Upload DMG to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: DeskBreak.dmg
+          generate_release_notes: true

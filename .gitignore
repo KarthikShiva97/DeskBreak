@@ -1,5 +1,7 @@
 .build/
 *.app
+*.dmg
+dmg-staging/
 .swiftpm/
 .DS_Store
 xcuserdata/
